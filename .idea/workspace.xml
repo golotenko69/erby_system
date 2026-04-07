@@ -1,29 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="081609cc-6517-47a1-b255-4409f840f2ce" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/ERBU.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/django_erbu/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/django_erbu/asgi.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/django_erbu/settings.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/django_erbu/urls.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/django_erbu/wsgi.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/admin.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/apps.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/migrations/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/models.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/index.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/tests.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/urls.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/views.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/manage.py" afterDir="false" />
+    <list default="true" id="081609cc-6517-47a1-b255-4409f840f2ce" name="Changes" comment="Create Project">
+      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/about.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/education_confirm_delete.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/education_detail.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/education_edit.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/educations.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/student_confirm_delete.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/student_detail.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/students.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/students_form.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/templates/base.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/templates/includes/navigation.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/contacts.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/django_erbu/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/django_erbu/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/erbu_main/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/admin.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/erbu_main/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/erbu_main/templates/erbu_main/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/erbu_main/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/urls.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/erbu_main/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/views.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -33,36 +30,53 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
-        <option value="HTML File" />
         <option value="Python Script" />
+        <option value="HTML File" />
       </list>
     </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;golotenko69&quot;
+  }
+}</component>
   <component name="GithubDefaultAccount">
     <option name="defaultAccountId" value="e3d933e4-c316-42ab-a307-d2cd2715a8ae" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 0
-}]]></component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/golotenko69/erby_system&quot;,
+    &quot;accountId&quot;: &quot;e3d933e4-c316-42ab-a307-d2cd2715a8ae&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 0
+}</component>
   <component name="ProjectId" id="3BkgjDl56JC9NruRiQdRogiYTg3" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "DefaultHtmlFileTemplate": "HTML File",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "master",
-    "settings.editor.selected.configurable": "org.jetbrains.plugins.github.ui.GithubSettingsConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;DefaultHtmlFileTemplate&quot;: &quot;HTML File&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;org.jetbrains.plugins.github.ui.GithubSettingsConfigurable&quot;
   }
-}]]></component>
+}</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\Pycharm\ERBU\templates\includes" />
+    </key>
+  </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -78,6 +92,15 @@
       <option name="presentableId" value="Default" />
       <updated>1775038614754</updated>
     </task>
+    <task id="LOCAL-00001" summary="Create Project">
+      <option name="closed" value="true" />
+      <created>1775053486614</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1775053486614</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -85,10 +108,26 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="master" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
           </value>
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Create Project" />
+    <option name="LAST_COMMIT_MESSAGE" value="Create Project" />
   </component>
 </project>

@@ -55,7 +55,7 @@ ROOT_URLCONF = 'django_erbu.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -75,8 +75,16 @@ WSGI_APPLICATION = 'django_erbu.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'mssql',
+        'NAME': 'StudentsRegionalBase',
+        'HOST': '127.0.0.1',  # Используйте IP вместо localhost для исключения проблем с IPv6
+        'PORT': '1433',
+        'OPTIONS': {
+            'driver': 'ODBC Driver 18 for SQL Server',
+            'extra_params': 'Trusted_Connection=yes;TrustServerCertificate=yes',
+            # Если используете mssql-django, лучше явно указать:
+            'host_is_server': True,
+        },
     }
 }
 

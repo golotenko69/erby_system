@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Студенты - Журнал {% endblock %}
+{% block content %}
+    <h1>Студенты</h1>
+    <p>Ниже представлен список студентов</p>
+    <p><a href="#">Добавить студента</a></p>
+    <hr>
+    {% for student in students %}
+        <li>
+            <a href="#">{{ student.first_name }} {{ student.last_name }}</a>
+        </li>
+    {% empty %}
+        <li>Список студентов пуст.</li>
+    {% endfor %}
+{% endblock %}

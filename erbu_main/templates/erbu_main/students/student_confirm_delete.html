@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Подтверждение удаления{% endblock %}
+
+{% block content %}
+    <h2>Удаление студента</h2>
+
+    <p>Вы уверены, что хотите удалить студента: {{ student.first_name }} {{ student.last_name }}</p>
+    <p>Это действие необратимо.</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit">Да, удалить</button>
+        <a href="{% url 'student_detail' student_id=student.id %}">Отмена</a>
+    </form>
+{% endblock %}
