@@ -1,21 +1,38 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}ЕРБУ{% endblock %}</title>
+    <!-- Важно для мобильной адаптации -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Главная - Журнал{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-    <h1>Единая региональная база учета</h1>
-    {% include 'includes/navigation.html' %}
-    <hr>
+    <div class="app-container">
+        <header class="app-header">
+            <h1 class="logo">📒 Журнал <span>ЕРБУ</span></h1>
+            {% include 'includes/navigation.html' %}
+        </header>
 
-    <main>
-        {% block content %}
-        {% endblock %}
-    </main>
-    <footer style="margin-top: 50px;">
-        <hr>
-        <p>&copy; ЕРБУ 2026</p>
-    </footer>
+        {% if messages %}
+        <div class="messages-container">
+            {% for message in messages %}
+            <div class="message message-{{ message.tags|default:'info' }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <main class="app-main">
+            {% block content %}
+            {% endblock %}
+        </main>
+
+        <footer class="app-footer">
+            <p>&copy; 2026 ЕРБУ. Все права защищены.</p>
+        </footer>
+    </div>
 </body>
 </html>

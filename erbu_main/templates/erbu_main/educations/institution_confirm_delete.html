@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}Подтверждение удаления{% endblock %}
+
+{% block content %}
+    <div class="student-detail-section" style="background: #fef2f2; border-color: #fecaca;">
+        <h2 style="color: #dc2626;">🗑️ Удаление учебного заведения</h2>
+
+        <div style="margin: 20px 0;">
+            <p style="font-size: 1.2rem; margin-bottom: 10px;">
+                Вы уверены, что хотите удалить учебное заведение:
+            </p>
+            <p style="font-size: 1.3rem; font-weight: 600; color: #1e293b; padding: 15px; background: white; border-radius: 8px;">
+                "{{ institution.name }}"
+            </p>
+        </div>
+
+        <div style="background: #fee2e2; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <p style="color: #991b1b;">
+                <strong>⚠️ Внимание!</strong> Это действие необратимо.
+                Убедитесь, что в учреждении нет обучающихся студентов.
+            </p>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <div style="display: flex; gap: 15px;">
+                <button type="submit" style="background: #dc2626; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    Да, удалить
+                </button>
+                <a href="{% url 'institution_detail' institution_id=institution.pk %}" class="btn-back">
+                    Отмена
+                </a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

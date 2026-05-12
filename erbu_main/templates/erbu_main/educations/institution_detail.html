@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ institution.name }} - Журнал{% endblock %}
+
+{% block content %}
+    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
+        <div>
+            <h1>🏛️ {{ institution.name }}</h1>
+            <p style="color: #64748b;">ID: {{ institution.pk }} | Всего студентов: {{ total_students }}</p>
+        </div>
+        <div class="action-links" style="margin-top: 0;">
+            <a href="{% url 'institution_edit' institution_id=institution.pk %}" class="btn-back">✏️ Редактировать</a>
+            <a href="{% url 'institution_delete' institution_id=institution.pk %}" class="btn-delete">🗑️ Удалить</a>
+        </div>
+    </div>
+
+    {# Профессии #}
+    {% if professions %}
+        <div class="student-detail-section">
+            <h3>📚 Профессии и специальности</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                {% for profession in professions %}
+                    <span style="background: #e0e7ff; color: #3730a3; padding: 8px 16px; border-radius: 20px; font-size: 0.9rem;">
+                        {{ profession }}
+                    </span>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {# Студенты по курсам #}
+    <div class="student-detail-section">
+        <h3>👨‍🎓 Студенты по курсам</h3>
+
+        {% for course, students in students_by_course.items %}
+            {% if students %}
+                <div style="margin-bottom: 30px;">
+                    <h4 style="color: #3b82f6; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">
+                        {{ course }} курс ({{ students|length }} чел.)
+                    </h4>
+                    <div style="display: grid; gap: 10px; margin-top: 15px;">
+                        {% for item in students %}
+                            <div style="background: #f8fafc; padding: 15px; border-radius: 10px; border-left: 4px solid #3b82f6;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <a href="{% url 'student_detail' student_id=item.student.pk %}"
+                                           style="text-decoration: none; color: #1e293b; font-weight: 600; font-size: 1.1rem;">
+                                            {{ item.student.last_name }} {{ item.student.first_name }} {{ item.student.middle_name|default:"" }}
+                                        </a>
+                                        <p style="color: #64748b; margin-top: 5px;">
+                                            {{ item.profession }} | {{ item.form }}
+                                        </p>
+                                    </div>
+                                    {% if item.grad_date %}
+                                        <span style="background: #fef3c7; color: #92400e; padding: 5px 10px; border-radius: 6px; font-size: 0.85rem;">
+                                            Выпуск: {{ item.grad_date|date:"d.m.Y" }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+
+        {% if total_students == 0 %}
+            <p style="color: #94a3b8;">В этом учебном заведении пока нет студентов</p>
+        {% endif %}
+    </div>
+
+    <div class="action-links">
+        <a href="{% url 'institutions' %}" class="btn-back">← Назад к списку</a>
+    </div>
+{% endblock %}

@@ -1,14 +1,181 @@
 {% extends 'base.html' %}
 
-{% block title %}Детали студента: {{ student.first_name }} {{student.last_name }} {% endblock %}
+{% block title %}Детали студента: {{ student.first_name }} {{ student.last_name }} {% endblock %}
+
 {% block content %}
-    <h2>Информация о студенте</h2>
-    <p><a href="{% url 'student_edit' student_id=student.id %}">Редактировать студента</a> </p>
-    <p><strong>Имя: </strong>{{ student.first_name }}</p>
-    <p><strong>Фамилия: </strong>{{ student.last_name }}</p>
-    <p>
-        <strong>Группа: </strong><a href="{% url 'group_detail' group_id=student.group.id %}">{{ student.group }}</a>
-    </p>
-    <hr>
-    <a href="{% url 'students' %}">Назад к списку студентов</a>
+    <h1>👨‍🎓 {{ student.last_name }} {{ student.first_name }} {{ student.middle_name|default:"" }}</h1>
+
+    {# Основная информация #}
+    <div class="student-detail-section">
+        <h3>📝 Основная информация</h3>
+        <p><strong>Пол:</strong> {{ student.get_sex_display }}</p>
+        <p><strong>Дата рождения:</strong> {{ student.birthday|date:"d.m.Y" }}</p>
+        <p><strong>Статус:</strong> {{ student.get_status_display }}</p>
+        <p><strong>Телефон:</strong> {{ student.phone|default:"Не указан" }}</p>
+        <p><strong>Email:</strong> {{ student.email|default:"Не указан" }}</p>
+        <p><strong>СНИЛС:</strong> {{ student.snils|default:"Не указан" }}</p>
+        <p><strong>ИНН:</strong> {{ student.inn|default:"Не указан" }}</p>
+    </div>
+
+    {# Паспорт #}
+    <div class="student-detail-section">
+        <h3>📋 Паспорт</h3>
+        {% if passport %}
+            <p><strong>Серия:</strong> {{ passport.series|default:"—" }}</p>
+            <p><strong>Номер:</strong> {{ passport.number|default:"—" }}</p>
+            <p><strong>Кем выдан:</strong> {{ passport.issued|default:"—" }}</p>
+            <p><strong>Дата выдачи:</strong> {{ passport.date_issued|date:"d.m.Y"|default:"—" }}</p>
+            <p><strong>Код подразделения:</strong> {{ passport.department_code|default:"—" }}</p>
+            <p><strong>Место рождения:</strong> {{ passport.place_birth|default:"—" }}</p>
+            <p><strong>Место жительства:</strong> {{ passport.place_resident|default:"—" }}</p>
+        {% else %}
+            <p style="color: #94a3b8;">Нет данных о паспорте</p>
+        {% endif %}
+    </div>
+
+    {# Инвалидность #}
+    <div class="student-detail-section">
+        <h3>🏥 Инвалидность</h3>
+        {% if disability %}
+            <p><strong>ОВЗ:</strong>
+                {% if disability.status_ovz == 'Да' %}
+                    <span style="color: #dc2626;">Да</span>
+                {% else %}
+                    <span style="color: #16a34a;">Нет</span>
+                {% endif %}
+            </p>
+            <p><strong>Группа инвалидности:</strong> {{ disability.disability_group|default:"Не указана" }}</p>
+            <p><strong>Тип нозологии:</strong> {{ disability.get_nosology_type_display|default:"Не указан" }}</p>
+            <p><strong>Дата снятия:</strong> {{ disability.year_removal|date:"d.m.Y"|default:"Не указана" }}</p>
+
+            {# МСЭ #}
+            <h4 style="margin-top: 16px;">📄 МСЭ</h4>
+            {% if mse %}
+                <p><strong>Серия:</strong> {{ mse.series|default:"—" }}</p>
+                <p><strong>Номер:</strong> {{ mse.number|default:"—" }}</p>
+                <p><strong>Дата выдачи:</strong> {{ mse.date_issued|date:"d.m.Y"|default:"—" }}</p>
+                <p><strong>Дата переосвидетельствования:</strong> {{ mse.date_next_examination|date:"d.m.Y"|default:"—" }}</p>
+            {% else %}
+                <p style="color: #94a3b8;">Нет данных МСЭ</p>
+            {% endif %}
+
+            {# ПМПК #}
+            <h4 style="margin-top: 16px;">📋 ПМПК</h4>
+            {% if pmpk %}
+                <p><strong>Номер заключения:</strong> {{ pmpk.number|default:"—" }}</p>
+                <p><strong>Дата выдачи:</strong> {{ pmpk.date_issued|date:"d.m.Y"|default:"—" }}</p>
+                <p><strong>Рекомендованная программа:</strong> {{ pmpk.education_programm_pmpk|default:"—" }}</p>
+            {% else %}
+                <p style="color: #94a3b8;">Нет данных ПМПК</p>
+            {% endif %}
+        {% else %}
+            <p style="color: #94a3b8;">Нет данных об инвалидности</p>
+        {% endif %}
+    </div>
+
+    {# Образование (оконченное) #}
+    <div class="student-detail-section">
+        <h3>🎓 Образование (оконченное)</h3>
+        {% for edu in education_ended %}
+            <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
+                <p><strong>{{ edu.name|default:"Не указано" }}</strong></p>
+                <p>Тип: {{ edu.get_education_type_display|default:"—" }}</p>
+                <p>Документ: {{ edu.get_education_document_display|default:"—" }}</p>
+                <p>Серия/Номер: {{ edu.series|default:"—" }}</p>
+                <p>Дата выдачи: {{ edu.date_issued|date:"d.m.Y"|default:"—" }}</p>
+            </div>
+        {% empty %}
+            <p style="color: #94a3b8;">Нет данных об оконченном образовании</p>
+        {% endfor %}
+    </div>
+
+    {# Текущее образование #}
+    <div class="student-detail-section">
+        <h3>📚 Текущее образование</h3>
+        {% for edu in education_process %}
+            <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
+                <p><strong>{{ edu.education_institution.name|default:"Не указано" }}</strong></p>
+                <p>Профессия: {{ edu.profession|default:"—" }}</p>
+                <p>Курс: {{ edu.course|default:"—" }}</p>
+                <p>Форма обучения: {{ edu.get_form_display|default:"—" }}</p>
+                <p>Срок обучения: {{ edu.term|default:"—" }} мес.</p>
+                <p>Дата выпуска: {{ edu.grad_date|date:"d.m.Y"|default:"—" }}</p>
+            </div>
+        {% empty %}
+            <p style="color: #94a3b8;">Нет данных о текущем образовании</p>
+        {% endfor %}
+    </div>
+
+    {# Целевое обучение #}
+    <div class="student-detail-section">
+        <h3>🎯 Целевое обучение</h3>
+        {% for target in student.targets.all %}
+            <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
+                <p><strong>Договор:</strong> {{ target.agreement }}</p>
+                <p><strong>Организация:</strong> {{ target.name_organization|default:"—" }}</p>
+                <p><strong>Абилимпикс:</strong> {{ target.abilimpiks }}</p>
+            </div>
+        {% empty %}
+            <p style="color: #94a3b8;">Нет данных о целевом обучении</p>
+        {% endfor %}
+    </div>
+
+    {# Родители #}
+    <div class="student-detail-section">
+        <h3>👪 Родители</h3>
+        {% for parent in parents %}
+            <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
+                <p><strong>{{ parent.last_name|default:"" }} {{ parent.first_name|default:"" }} {{ parent.middle_name|default:"" }}</strong></p>
+                <p>Телефон: {{ parent.phone|default:"—" }}</p>
+                <p>Email: {{ parent.email|default:"—" }}</p>
+            </div>
+        {% empty %}
+            <p style="color: #94a3b8;">Нет данных о родителях</p>
+        {% endfor %}
+    </div>
+
+    {# Трудоустройство #}
+    <div class="student-detail-section">
+        <h3>💼 Трудоустройство</h3>
+        {% for job in employment %}
+            <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
+                <p><strong>Статус:</strong>
+                    {% if job.employment_status == 'Да' %}
+                        <span style="color: #16a34a;">Трудоустроен</span>
+                    {% else %}
+                        <span style="color: #dc2626;">Не трудоустроен</span>
+                    {% endif %}
+                </p>
+                <p><strong>Место работы:</strong> {{ job.place_job|default:"—" }}</p>
+                <p><strong>Должность:</strong> {{ job.position|default:"—" }}</p>
+                <p><strong>Дата приема:</strong> {{ job.hiring_date|date:"d.m.Y"|default:"—" }}</p>
+                <p><strong>Причина нетрудоустройства:</strong> {{ job.reason_not_employment|default:"—" }}</p>
+                <p><strong>Состоит в ЦЗН:</strong> {{ job.accounting_employment }}</p>
+                <p><strong>Резюме создано:</strong> {{ job.resume_status }}</p>
+            </div>
+        {% empty %}
+            <p style="color: #94a3b8;">Нет данных о трудоустройстве</p>
+        {% endfor %}
+    </div>
+
+    {# Ответственные лица #}
+    <div class="student-detail-section">
+        <h3>👤 Ответственные лица</h3>
+        {% for person in student.responsible_persons.all %}
+            <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
+                <p><strong>{{ person.last_name }} {{ person.first_name }} {{ person.middle_name|default:"" }}</strong></p>
+                <p>Должность: {{ person.position|default:"—" }}</p>
+                <p>Телефон: {{ person.phone|default:"—" }}</p>
+                <p>Email: {{ person.email|default:"—" }}</p>
+            </div>
+        {% empty %}
+            <p style="color: #94a3b8;">Нет ответственных лиц</p>
+        {% endfor %}
+    </div>
+
+    <div class="action-links">
+        <a href="{% url 'students' %}" class="btn-back">← Назад к списку</a>
+        <a href="{% url 'student_edit' student_id=student.pk %}" class="btn-back">✏️ Редактировать</a>
+        <a href="{% url 'student_delete' student_id=student.pk %}" class="btn-delete">🗑️ Удалить</a>
+    </div>
 {% endblock %}

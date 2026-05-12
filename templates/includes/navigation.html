@@ -1,6 +1,23 @@
 <nav>
+
+
+    {% if user.is_authenticated %}
+        <span>Привет, {{ user.username }}</span>
+        <form action="{% url 'logout' %}" method="post" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" style="background:none; border:none; color:blue; text-decoration:underline; cursor:pointer; padding:0;">
+                Выйти
+            </button>
+        </form>
+    {% else %}
+        <a href="{% url 'login' %}">Войти</a>
+    {% endif %}
+
+
+
         <a href="{% url 'index' %}">Главная</a>
         <a href="{% url 'students' %}">Студенты</a>
+        <a href="{% url 'institutions' %}">Учреждения</a>
         <a href="{% url 'contacts' %}">Контакты</a>
         <a href="{% url 'about' %}">О нас</a>
     </nav>

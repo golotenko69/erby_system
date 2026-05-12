@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Учебные заведения - Журнал{% endblock %}
+
+{% block content %}
+    <h1>🏛️ Учебные заведения</h1>
+    <p style="color: #64748b; font-size: 1.1rem; margin-bottom: 8px;">Колледжи и образовательные учреждения</p>
+
+    <a href="{% url 'institution_add' %}" class="add-student-btn">Добавить учебное заведение</a>
+
+    <hr>
+
+    {% if institutions %}
+        <div class="institutions-grid" style="display: grid; gap: 15px; margin-top: 20px;">
+            {% for institution in institutions %}
+                <div class="institution-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div style="flex: 1;">
+                            <a href="{% url 'institution_detail' institution_id=institution.pk %}"
+                               style="text-decoration: none; color: #1e293b; font-size: 1.2rem; font-weight: 600; display: block; margin-bottom: 10px;">
+                                🏫 {{ institution.name }}
+                            </a>
+                            <div style="display: flex; gap: 20px; color: #64748b; font-size: 0.9rem;">
+                                <span>👥 Студентов: {{ institution.student_count }}</span>
+                                <span>🆔 ID: {{ institution.pk }}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <a href="{% url 'institution_edit' institution_id=institution.pk %}"
+                               style="color: #3b82f6; text-decoration: none; padding: 5px 10px; border: 1px solid #3b82f6; border-radius: 6px; font-size: 0.9rem;">
+                                ✏️
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        {# Пагинация #}
+        {% if is_paginated %}
+            <div style="margin-top: 30px; display: flex; gap: 10px; justify-content: center;">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}" class="btn-back">← Назад</a>
+                {% endif %}
+
+                <span style="padding: 10px;">
+                    Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}
+                </span>
+
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}" class="btn-back">Вперёд →</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="empty-list">
+            <p>Список учебных заведений пуст</p>
+            <p style="font-size: 0.9rem; margin-top: 10px;">Добавьте первое учебное заведение, нажав кнопку выше</p>
+        </div>
+    {% endif %}
+{% endblock %}

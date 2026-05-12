@@ -25,11 +25,7 @@ class Student(models.Model):
     inn = models.CharField("ИНН", max_length=12, blank=True, null=True)
 
     # Связь с ответственными лицами (один куратор на многих студентов и наоборот)
-    responsible_persons = models.ManyToManyField(
-        'ResponsiblePerson',
-        related_name='students',
-        verbose_name="Ответственные лица"
-    )
+
 
     class Meta:
         verbose_name = "Студент"
@@ -66,10 +62,19 @@ class EducationEnded(models.Model):
     series = models.CharField("Серия/Номер", max_length=20, blank=True, null=True)
     date_issued = models.DateField("Дата выдачи", blank=True, null=True)
 
+class EducationInstitution(models.Model):
+    name = models.CharField("Название", max_length=255)
+
+    def __str__(self):
+        return self.name
 
 class EducationProcess(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='current_education')
-    education_institution = models.CharField("ВУЗ/Колледж", max_length=100, blank=True, null=True)
+    education_institution = models.ForeignKey(
+        EducationInstitution,
+        on_delete=models.CASCADE,
+        related_name='students'
+    )
     profession = models.CharField("Профессия", max_length=100, blank=True, null=True)
     course = models.IntegerField("Курс", choices=[(i, str(i)) for i in range(1, 5)])
     form = models.CharField("Форма обучения", max_length=20,
@@ -87,27 +92,12 @@ class Parent(models.Model):
     email = models.EmailField("Email", max_length=100, blank=True, null=True)
 
 
-class Mse(models.Model):
-    series = models.CharField("Серия МСЭ", max_length=20, blank=True, null=True)
-    number = models.CharField("Номер МСЭ", max_length=20, blank=True, null=True)
-    date_issued = models.DateField("Дата выдачи", blank=True, null=True)
-    date_next_examination = models.DateField("Дата переосвидетельствования", blank=True, null=True)
-
-
-class Pmpk(models.Model):
-    number = models.CharField("Номер заключения", max_length=50, blank=True, null=True)
-    date_issued = models.DateField("Дата выдачи", blank=True, null=True)
-    education_programm_pmpk = models.CharField("Рекомендованная программа", max_length=100, blank=True, null=True)
-
 
 class DisabilityInfo(models.Model):
     # OneToOne: Актуальная информация об инвалидности
     student = models.OneToOneField(Student, on_delete=models.CASCADE, primary_key=True, related_name='disability_info')
     status_ovz = models.CharField("Статус ОВЗ", max_length=3, choices=[('Да', 'Да'), ('Нет', 'Нет')])
-    pmpk = models.ForeignKey(Pmpk, on_delete=models.SET_NULL, null=True, blank=True)
-    mse = models.ForeignKey(Mse, on_delete=models.SET_NULL, null=True, blank=True)
     disability_group = models.CharField("Группа инвалидности", max_length=50, blank=True, null=True)
-
     NOSOLOGY_CHOICES = [
         ('аутизм', 'Аутизм'), ('ментальные нарушения (ЗПР)', 'ЗПР'),
         ('нарушения опорно-двигательного аппарата (мобильные)', 'НОДА (мобильные)'),
@@ -116,6 +106,27 @@ class DisabilityInfo(models.Model):
     ]
     nosology_type = models.CharField("Нозология", max_length=100, choices=NOSOLOGY_CHOICES)
     year_removal = models.DateField("Дата снятия", blank=True, null=True)
+
+class Mse(models.Model):
+    disability = models.OneToOneField(
+        DisabilityInfo,
+        on_delete=models.CASCADE,
+        related_name='mse'
+    )
+    series = models.CharField("Серия МСЭ", max_length=20, blank=True, null=True)
+    number = models.CharField("Номер МСЭ", max_length=20, blank=True, null=True)
+    date_issued = models.DateField("Дата выдачи", blank=True, null=True)
+    date_next_examination = models.DateField("Дата переосвидетельствования", blank=True, null=True)
+
+class Pmpk(models.Model):
+    disability = models.OneToOneField(
+        DisabilityInfo,
+        on_delete=models.CASCADE,
+        related_name='pmpk'
+    )
+    number = models.CharField("Номер заключения", max_length=50, blank=True, null=True)
+    date_issued = models.DateField("Дата выдачи", blank=True, null=True)
+    education_programm_pmpk = models.CharField("Рекомендованная программа", max_length=100, blank=True, null=True)
 
 
 class EducationTarget(models.Model):
@@ -150,3 +161,5 @@ class ResponsiblePerson(models.Model):
 
     def __str__(self):
         return f"{self.last_name} ({self.position})"
+
+

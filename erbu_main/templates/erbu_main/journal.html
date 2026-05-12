@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block  title %}Журнал: {{ group.name }} - {{ subject.title }}{% endblock %}
+
+{% block content %}
+  <h2>Журнал группы "{{ group.name }}"</h2>
+  <h3>Предмет: {{ subject.title }}</h3>
+
+  <hr>
+  <a href="{% url 'groups_for_subject' subject_id=subject.id %}">Назад к списку групп</a>
+{% endblock %}

@@ -2,25 +2,38 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="081609cc-6517-47a1-b255-4409f840f2ce" name="Changes" comment="Create Project">
-      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/about.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/education_confirm_delete.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/education_detail.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/education_edit.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/educations.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/student_confirm_delete.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/student_detail.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/students.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/students_form.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/templates/base.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/templates/includes/navigation.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/institution_confirm_delete.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/institution_detail.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/institution_form.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/institution_list.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/journal.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/templates/registration/login.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/templates/registration/signup.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/users/admin.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/users/apps.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/users/forms.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/users/migrations/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/users/models.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/users/tests.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/users/views.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/contacts.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/django_erbu/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/django_erbu/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/django_erbu/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/django_erbu/urls.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/erbu_main/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/admin.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/erbu_main/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/education_confirm_delete.html" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/forms.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/education_detail.html" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/mixins.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/education_edit.html" beforeDir="false" afterPath="$PROJECT_DIR$/static/css/style.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/erbu_main/templates/erbu_main/educations/educations.html" beforeDir="false" afterPath="$PROJECT_DIR$/users/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/erbu_main/templates/erbu_main/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/student_confirm_delete.html" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/student_confirm_delete.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/student_detail.html" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/student_detail.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/students.html" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/students.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/students_form.html" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/templates/erbu_main/students/students_form.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/erbu_main/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/urls.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/erbu_main/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/erbu_main/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/base.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/templates/includes/navigation.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/includes/navigation.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -74,6 +87,7 @@
 }</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\Pycharm\ERBU\erbu_main\templates\erbu_main" />
       <recent name="D:\Pycharm\ERBU\templates\includes" />
     </key>
   </component>

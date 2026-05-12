@@ -1,16 +1,149 @@
 {% extends 'base.html' %}
 
 {% block title %}Студенты - Журнал {% endblock %}
+
 {% block content %}
-    <h1>Студенты</h1>
-    <p>Ниже представлен список студентов</p>
-    <p><a href="#">Добавить студента</a></p>
-    <hr>
-    {% for student in students %}
-        <li>
-            <a href="#">{{ student.first_name }} {{ student.last_name }}</a>
-        </li>
-    {% empty %}
-        <li>Список студентов пуст.</li>
-    {% endfor %}
+    <div class="page-header">
+        <div class="header-content">
+            <div>
+                <h1>👥 Студенты</h1>
+                <p class="header-subtitle">Управление списком студентов</p>
+            </div>
+            <div class="header-stats">
+                <div class="stat-card">
+                    <span class="stat-value">{{ students|length }}</span>
+                    <span class="stat-label">Всего студентов</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-actions">
+        <a href="{% url 'student_add' %}" class="btn-primary">
+            <span class="btn-icon">➕</span>
+            Добавить студента
+        </a>
+
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" placeholder="Поиск студентов..." class="search-input" id="studentSearch">
+        </div>
+    </div>
+
+    <div class="students-container">
+        {% if students %}
+            <div class="students-grid">
+                {% for student in students %}
+                    <div class="student-card-modern">
+                        <div class="student-avatar-modern">
+                            <span class="avatar-text">{{ student.first_name|first|upper }}{{ student.last_name|first|upper }}</span>
+                        </div>
+
+                        <div class="student-info-modern">
+                            <h3 class="student-name-modern">
+                                {{ student.last_name }} {{ student.first_name }}
+                                {% if student.middle_name %}
+                                    <span class="student-middle">{{ student.middle_name }}</span>
+                                {% endif %}
+                            </h3>
+
+                            <div class="student-details-modern">
+                                <span class="detail-item">
+                                    <span class="detail-icon">🎂</span>
+                                    {{ student.birthday|date:"d.m.Y" }}
+                                </span>
+                                <span class="detail-item">
+                                    <span class="detail-icon">📞</span>
+                                    {{ student.phone|default:"Не указан" }}
+                                </span>
+                                <span class="detail-item">
+                                    <span class="detail-icon">📧</span>
+                                    {{ student.email|default:"Не указан"|truncatechars:25 }}
+                                </span>
+                            </div>
+
+                            <div class="student-badges">
+                                <span class="badge badge-status">
+                                    {{ student.get_status_display }}
+                                </span>
+                                {% if student.disability_info.status_ovz == 'Да' %}
+                                    <span class="badge badge-ovz">ОВЗ</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="student-actions-modern">
+                            <a href="{% url 'student_detail' student_id=student.pk %}"
+                               class="btn-icon-action"
+                               title="Просмотр">
+                                👁️
+                            </a>
+                            <a href="{% url 'student_edit' student_id=student.pk %}"
+                               class="btn-icon-action"
+                               title="Редактировать">
+                                ✏️
+                            </a>
+                            <a href="{% url 'student_delete' student_id=student.pk %}"
+                               class="btn-icon-action delete"
+                               title="Удалить">
+                                🗑️
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% if is_paginated %}
+                <div class="pagination-container">
+                    <div class="pagination">
+                        {% if page_obj.has_previous %}
+                            <a href="?page={{ page_obj.previous_page_number }}" class="page-link">←</a>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if num == page_obj.number %}
+                                <span class="page-link active">{{ num }}</span>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <a href="?page={{ num }}" class="page-link">{{ num }}</a>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}" class="page-link">→</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📚</div>
+                <h3>Список студентов пуст</h3>
+                <p>Добавьте первого студента, нажав кнопку выше</p>
+                <a href="{% url 'student_add' %}" class="btn-primary">Добавить студента</a>
+            </div>
+        {% endif %}
+    </div>
+
+
+    <script>
+        // Простой поиск студентов
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('studentSearch');
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase();
+                    const studentCards = document.querySelectorAll('.student-card-modern');
+
+                    studentCards.forEach(card => {
+                        const studentName = card.querySelector('.student-name-modern').textContent.toLowerCase();
+                        if (studentName.includes(searchTerm)) {
+                            card.style.display = 'flex';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                });
+            }
+        });
+    </script>
 {% endblock %}
