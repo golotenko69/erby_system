@@ -1,23 +1,84 @@
+{% if user.is_authenticated %}
 <nav>
+    <span>Привет, {{ user.username }}</span>
 
-
-    {% if user.is_authenticated %}
-        <span>Привет, {{ user.username }}</span>
-        <form action="{% url 'logout' %}" method="post" style="display:inline;">
-            {% csrf_token %}
-            <button type="submit" style="background:none; border:none; color:blue; text-decoration:underline; cursor:pointer; padding:0;">
-                Выйти
+    <!-- Вкладка УВЕДОМЛЕНИЙ (Доступна ТОЛЬКО админу) -->
+    {% if user.role == 'ADMIN' %}
+        <div class="notifications-dropdown">
+            <button class="dropdown-btn">
+                🔔 Уведомления (<span id="notify-count">{{ unread_count }}</span>)
             </button>
-        </form>
-    {% else %}
-        <a href="{% url 'login' %}">Войти</a>
+            <div class="dropdown-content">
+                {% if admin_logs %}
+                    {% for log in admin_logs %}
+                        <!-- ДОБАВЛЕНЫ КЛАССЫ И ДАТА-АТРИБУТ ДЛЯ ОБРАБОТКИ КЛИКА КАРТОЧКИ -->
+                        <div class="dropdown-item log-item-click {% if not log.is_read %}unread-log{% endif %}" data-log-id="{{ log.id }}">
+                            <div class="dropdown-item-header">
+                                <span class="badge badge-{{ log.action|lower }}">
+                                    {% if log.action == 'CREATE' %}Создан{% elif log.action == 'UPDATE' %}Изм.{% else %}Удален{% endif %}
+                                </span>
+                                <strong>{{ log.student_name }}</strong>
+                            </div>
+                            <div class="dropdown-item-body">
+                                <div><strong>Учреждение:</strong> {{ log.institution_name|default:"Администрация" }}</div>
+                                <div><strong>Пользователь:</strong> {{ log.user.username|default:"Система" }}</div>
+                                <div class="dropdown-item-date">{{ log.created_at|date:"d.m.Y H:i" }}</div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="dropdown-item empty">Нет новых уведомлений</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- СКРИПТ ДЛЯ ФОНОВОГО СБРОСА СЧЕТЧИКА -->
+        <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const dropdown = document.querySelector('.notifications-dropdown');
+            const countSpan = document.getElementById('notify-count');
+
+            if (dropdown && countSpan && countSpan.innerText !== '0') {
+                dropdown.addEventListener('mouseenter', function() {
+                    fetch("{% url 'mark_logs_read' %}", {
+                        method: "POST",
+                        headers: {
+                            "X-CSRFToken": "{{ csrf_token }}",
+                            "Content-Type": "application/json"
+                        }
+                    }).then(response => {
+                        if (response.ok) {
+                            countSpan.innerText = '0';
+                            document.querySelectorAll('.dropdown-item.unread-log').forEach(item => {
+                                // Сохраняем логику прозрачности, убирая класс недочитанных
+                                item.classList.remove('unread-log');
+                            });
+                        }
+                    });
+                }, { once: true });
+            }
+        });
+        </script>
     {% endif %}
 
+    <!-- Кнопка Выйти -->
+    <form action="{% url 'logout' %}" method="post" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" style="background:none; border:none; color:blue; text-decoration:underline; cursor:pointer; padding:0;">
+            Выйти
+        </button>
+    </form>
 
+    <!-- Ссылки, доступные всем авторизованным пользователям -->
+    <a href="{% url 'index' %}">Главная</a>
+    <a href="{% url 'students' %}">Студенты</a>
 
-        <a href="{% url 'index' %}">Главная</a>
-        <a href="{% url 'students' %}">Студенты</a>
+    <!-- Вкладка УЧРЕЖДЕНИЙ (Доступна ТОЛЬКО админу) -->
+    {% if user.role == 'ADMIN' %}
         <a href="{% url 'institutions' %}">Учреждения</a>
-        <a href="{% url 'contacts' %}">Контакты</a>
-        <a href="{% url 'about' %}">О нас</a>
-    </nav>
+    {% endif %}
+
+    <a href="{% url 'contacts' %}">Контакты</a>
+    <a href="{% url 'about' %}">О нас</a>
+</nav>
+{% endif %}

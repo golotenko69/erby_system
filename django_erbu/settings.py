@@ -49,6 +49,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'erbu_main.middleware.LoginRequiredMiddleware',
+    'erbu_main.middleware.InstitutionLastSeenMiddleware',
 ]
 
 ROOT_URLCONF = 'django_erbu.urls'
@@ -63,6 +65,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'erbu_main.context_processors.admin_notifications',
             ],
         },
     },
@@ -130,7 +133,9 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
-LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = 'index'
 LOGOUT_REDIRECT_URL = '/'
+
+LOGIN_URL = 'login'
 
 AUTH_USER_MODEL = 'users.CustomUser'

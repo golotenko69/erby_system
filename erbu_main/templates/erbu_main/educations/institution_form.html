@@ -1,57 +1,42 @@
 {% extends 'base.html' %}
 
-{% block title %}
-    {% if institution %}Редактирование{% else %}Добавление{% endif %} учебного заведения - Журнал
-{% endblock %}
-
 {% block content %}
     <h1>
-        {% if institution %}
-            ✏️ Редактирование: {{ institution.name }}
-        {% else %}
-            🏛️ Добавить новое учебное заведение
-        {% endif %}
+        {% if institution %}✏️ Редактирование: {{ institution.name }}
+        {% else %}🏛️ Добавить новое учебное заведение и ответственного{% endif %}
     </h1>
 
     <div class="student-detail-section">
         <form method="post">
             {% csrf_token %}
 
+            <h3 style="margin-bottom: 15px;">Данные учреждения</h3>
             <div style="margin-bottom: 20px;">
-                <label for="{{ form.name.id_for_label }}" style="font-weight: 600; margin-bottom: 8px; display: block;">
-                    {{ form.name.label }}
-                </label>
+                <label style="font-weight: 600;">{{ form.name.label }}</label>
                 {{ form.name }}
-                {% if form.name.errors %}
-                    <div style="color: #dc2626; font-size: 0.9rem; margin-top: 5px;">
-                        {{ form.name.errors }}
-                    </div>
-                {% endif %}
-                {% if form.name.help_text %}
-                    <small style="color: #64748b;">{{ form.name.help_text }}</small>
-                {% endif %}
             </div>
 
+            {% if not institution %}
+            <hr>
+            <h3 style="margin-top: 20px; margin-bottom: 15px;">Данные ответственного лица</h3>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <div><label>{{ form.teacher_last_name.label }}</label>{{ form.teacher_last_name }}</div>
+                <div><label>{{ form.teacher_first_name.label }}</label>{{ form.teacher_first_name }}</div>
+                <div><label>{{ form.teacher_middle_name.label }}</label>{{ form.teacher_middle_name }}</div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div><label>{{ form.teacher_phone.label }}</label>{{ form.teacher_phone }}</div>
+                <div><label>{{ form.teacher_email.label }}</label>{{ form.teacher_email }}</div>
+            </div>
+
+            <p style="color: #64748b; font-size: 0.9rem;">* Логин и пароль будут сгенерированы автоматически.</p>
+            {% endif %}
+
             <div style="display: flex; gap: 15px; margin-top: 30px;">
-                <button type="submit" class="add-student-btn" style="margin: 0;">
-                    {% if institution %}Сохранить изменения{% else %}Создать учреждение{% endif %}
-                </button>
-                <a href="{% if institution %}{% url 'institution_detail' institution_id=institution.pk %}{% else %}{% url 'institutions' %}{% endif %}"
-                   class="btn-back">
-                    Отмена
-                </a>
+                <button type="submit" class="add-student-btn">Сохранить</button>
             </div>
         </form>
     </div>
-
-    {% if institution %}
-        <div style="margin-top: 30px; padding: 20px; background: #fef2f2; border-radius: 12px; border: 1px solid #fecaca;">
-            <h3 style="color: #dc2626; margin-bottom: 10px;">⚠️ Опасная зона</h3>
-            <p style="margin-bottom: 15px;">Удаление учебного заведения возможно только если в нём нет студентов.</p>
-            <a href="{% url 'institution_delete' institution_id=institution.pk %}"
-               class="btn-delete">
-                Удалить учебное заведение
-            </a>
-        </div>
-    {% endif %}
 {% endblock %}

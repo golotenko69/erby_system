@@ -10,30 +10,75 @@
 
     <hr>
 
-    {% if institutions %}
-        <div class="institutions-grid" style="display: grid; gap: 15px; margin-top: 20px;">
-            {% for institution in institutions %}
-                <div class="institution-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                    <div style="display: flex; justify-content: space-between; align-items: start;">
-                        <div style="flex: 1;">
-                            <a href="{% url 'institution_detail' institution_id=institution.pk %}"
-                               style="text-decoration: none; color: #1e293b; font-size: 1.2rem; font-weight: 600; display: block; margin-bottom: 10px;">
-                                🏫 {{ institution.name }}
-                            </a>
-                            <div style="display: flex; gap: 20px; color: #64748b; font-size: 0.9rem;">
-                                <span>👥 Студентов: {{ institution.student_count }}</span>
-                                <span>🆔 ID: {{ institution.pk }}</span>
+        {% for institution in institutions %}
+        <div class="institution-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px;">
+            <div style="display: flex; flex-direction: column; gap: 8px; color: #64748b; font-size: 0.9rem;">
+                <div style="flex: 1;">
+                    <a href="{% url 'institution_detail' institution_id=institution.pk %}"
+                       style="text-decoration: none; color: #1e293b; font-size: 1.2rem; font-weight: 600; display: block; margin-bottom: 10px;">
+                        🏫 {{ institution.name }}
+                    </a>
+
+                    <div style="display: flex; flex-direction: column; gap: 8px; color: #64748b; font-size: 0.9rem;">
+                        <div style="display: flex; gap: 20px;">
+                            <span>👥 Всего студентов: <strong>{{ institution.student_count }}</strong></span>
+                            <span>🆔 ID: {{ institution.pk }}</span>
+                        </div>
+
+                        {# Блок специально для Администратора #}
+                        {% if is_admin %}
+                            <hr style="border: 0; border-top: 1px dashed #e2e8f0; margin: 5px 0;">
+
+                            <div>
+                                🟢 <strong>В сети (активность):</strong>
+                                {% if institution.last_seen %}
+                                    {{ institution.last_seen|date:"d.m.Y H:i" }}
+                                {% else %}
+                                    <span style="color: #94a3b8;">Нет данных об активности</span>
+                                {% endif %}
                             </div>
-                        </div>
-                        <div style="display: flex; gap: 10px;">
-                            <a href="{% url 'institution_edit' institution_id=institution.pk %}"
-                               style="color: #3b82f6; text-decoration: none; padding: 5px 10px; border: 1px solid #3b82f6; border-radius: 6px; font-size: 0.9rem;">
-                                ✏️
-                            </a>
-                        </div>
+
+                            <div>
+                                📥 <strong>Добавлено сегодня:</strong>
+                                <span class="badge" style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: 600;">
+                                    +{{ institution.students_added_today }}
+                                </span>
+                            </div>
+
+                            {% if institution.recent_additions %}
+                                <div style="font-size: 0.85rem; background: #f8fafc; padding: 8px; border-radius: 6px; margin-top: 5px;">
+                                    <span style="color: #475569; font-weight: 600;">Последние добавления:</span>
+                                    <ul style="margin: 3px 0 0 0; padding-left: 20px; color: #475569;">
+                                        {% for item in institution.recent_additions %}
+                                            <li>
+                                                {{ item.student.last_name }} {{ item.student.first_name }}
+                                                <span style="color: #94a3b8;">({{ item.created_at|date:"d.m.H H:i" }})</span>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+                        {% endif %}
                     </div>
                 </div>
-            {% endfor %}
+                <div style="margin-top: 5px;">
+                    👤 <strong>Ответственный:</strong>
+                    {% if institution.teacher %}
+                        {{ institution.teacher.last_name }} {{ institution.teacher.first_name }}
+                    {% else %}
+                        <span style="color: #dc2626;">Не назначен</span>
+                    {% endif %}
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <a href="{% url 'institution_edit' institution_id=institution.pk %}"
+                       style="color: #3b82f6; text-decoration: none; padding: 5px 10px; border: 1px solid #3b82f6; border-radius: 6px; font-size: 0.9rem;">
+                        ✏️
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
         </div>
 
         {# Пагинация #}
@@ -51,8 +96,8 @@
                     <a href="?page={{ page_obj.next_page_number }}" class="btn-back">Вперёд →</a>
                 {% endif %}
             </div>
-        {% endif %}
-    {% else %}
+
+        {% else %}
         <div class="empty-list">
             <p>Список учебных заведений пуст</p>
             <p style="font-size: 0.9rem; margin-top: 10px;">Добавьте первое учебное заведение, нажав кнопку выше</p>

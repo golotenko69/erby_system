@@ -34,5 +34,85 @@
             <p>&copy; 2026 ЕРБУ. Все права защищены.</p>
         </footer>
     </div>
+
+    <!-- ================= РАЗМЕТКА МОДАЛЬНОЙ КАРТОЧКИ ОБНОВЛЕНИЙ ================= -->
+    <div id="logModal" class="custom-modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-modal-btn" onclick="closeLogModal()">&times;</span>
+            <h3 id="modalAction" class="modal-title">Информация об обновлении</h3>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0;">
+            <div class="modal-body">
+                <p><strong>Кому изменили:</strong> <span id="modalStudent"></span></p>
+                <p><strong>Кто изменил:</strong> <span id="modalUser"></span> (<span id="modalInstitution"></span>)</p>
+                <p><strong>Дата и время:</strong> <span id="modalDate"></span></p>
+
+                <div class="changes-block">
+                    <h5>Что именно изменилось:</h5>
+                    <div id="modalChanges" class="changes-text"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= СЦЕНАРИЙ ДЛЯ ПОЛУЧЕНИЯ ДАННЫХ ИЗ API И ВЫВОДА КАРТОЧКИ ================= -->
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Перехватываем клик по всему body, отслеживая класс .log-item-click
+        document.body.addEventListener('click', function(event) {
+            const targetItem = event.target.closest('.log-item-click');
+
+            if (targetItem) {
+                event.preventDefault();
+                const logId = targetItem.getAttribute('data-log-id');
+
+                if (!logId) return;
+
+                // Стучимся во View-эндпоинт за подробностями изменений
+                fetch(`/logs/api/${logId}/`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Доступ ограничен или запись не найдена');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.error) {
+                            alert(data.error);
+                            return;
+                        }
+
+                        // Заполняем текстовые поля в модальной карточке
+                        document.getElementById('modalAction').innerText = `Операция: ${data.action_display}`;
+                        document.getElementById('modalStudent').innerText = data.student_name;
+                        document.getElementById('modalUser').innerText = data.user;
+                        document.getElementById('modalInstitution').innerText = data.institution;
+                        document.getElementById('modalDate').innerText = data.date;
+
+                        // Превращаем Python \n переносы в теги <br>
+                        document.getElementById('modalChanges').innerHTML = data.changes.replace(/\n/g, '<br>');
+
+                        // Отображаем окно в режиме Flexbox для центрирования
+                        document.getElementById('logModal').style.display = 'flex';
+                    })
+                    .catch(err => {
+                        console.error('Ошибка AJAX-запроса подробностей обновления:', err);
+                    });
+            }
+        });
+    });
+
+    // Функция закрытия окна
+    function closeLogModal() {
+        document.getElementById('logModal').style.display = 'none';
+    }
+
+    // Закрытие по клику мимо контента карточки
+    window.onclick = function(event) {
+        const modal = document.getElementById('logModal');
+        if (event.target === modal) {
+            modal.style.display = "none";
+        }
+    }
+    </script>
 </body>
 </html>

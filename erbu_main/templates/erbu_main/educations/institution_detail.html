@@ -6,6 +6,25 @@
     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
         <div>
             <h1>🏛️ {{ institution.name }}</h1>
+            <div class="student-detail-section" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                <h3>👨‍💼 Ответственное лицо</h3>
+                {% if responsible_teacher %}
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
+                        <div>
+                            <p><strong>ФИО:</strong> {{ responsible_teacher.last_name }} {{ responsible_teacher.first_name }} {{ responsible_teacher.middle_name }}</p>
+                            <p><strong>Телефон:</strong> {{ responsible_teacher.phone }}</p>
+                            <p><strong>Email:</strong> {{ responsible_teacher.email }}</p>
+                        </div>
+                        <div style="background: #fff; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                            <p style="color: #0369a1; font-weight: 600; margin-bottom: 8px;">🔑 Данные для входа:</p>
+                            <p><strong>Логин:</strong> <span style="font-family: monospace; background: #f1f5f9; padding: 2px 5px;">{{ responsible_teacher.username }}</span></p>
+                            <p><strong>Пароль:</strong> <span style="font-family: monospace; background: #f1f5f9; padding: 2px 5px;">{{ responsible_teacher.raw_password }}</span></p>
+                        </div>
+                    </div>
+                {% else %}
+                    <p style="color: #94a3b8;">Ответственное лицо пока не назначено.</p>
+                {% endif %}
+            </div>
             <p style="color: #64748b;">ID: {{ institution.pk }} | Всего студентов: {{ total_students }}</p>
         </div>
         <div class="action-links" style="margin-top: 0;">

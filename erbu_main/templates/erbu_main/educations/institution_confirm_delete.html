@@ -15,19 +15,41 @@
             </p>
         </div>
 
-        <div style="background: #fee2e2; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-            <p style="color: #991b1b;">
-                <strong>⚠️ Внимание!</strong> Это действие необратимо.
-                Убедитесь, что в учреждении нет обучающихся студентов.
-            </p>
-        </div>
+        {% if students_count > 0 %}
+            <!-- Блок предупреждения, если студенты ЕСТЬ -->
+            <div style="background: #fee2e2; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #fca5a5;">
+                <p style="color: #991b1b; font-size: 1.1rem; margin: 0 0 10px 0;">
+                    <strong>⚠️ Внимание! Удаление невозможно.</strong>
+                </p>
+                <p style="color: #7f1d1d; margin: 0;">
+                    В данном учреждении числится <strong>{{ students_count }}</strong> шт. студентов.
+                    Прежде чем удалить учреждение, переведите студентов в другие заведения или удалите их профили.
+                </p>
+            </div>
+        {% else %}
+            <!-- Блок, если студентов нет -->
+            <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #bbf7d0;">
+                <p style="color: #166534; margin: 0;">
+                    <strong>✅ Проверка пройдена:</strong> В учреждении нет обучающихся студентов. Удаление безопасно.
+                </p>
+            </div>
+        {% endif %}
 
         <form method="post">
             {% csrf_token %}
             <div style="display: flex; gap: 15px;">
-                <button type="submit" style="background: #dc2626; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                    Да, удалить
-                </button>
+                {% if students_count > 0 %}
+                    <!-- Деактивированная кнопка -->
+                    <button type="button" style="background: #94a3b8; color: #cbd5e1; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 600; cursor: not-allowed;" disabled>
+                        Удаление заблокировано
+                    </button>
+                {% else %}
+                    <!-- Активная кнопка -->
+                    <button type="submit" style="background: #dc2626; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        Да, удалить
+                    </button>
+                {% endif %}
+
                 <a href="{% url 'institution_detail' institution_id=institution.pk %}" class="btn-back">
                     Отмена
                 </a>

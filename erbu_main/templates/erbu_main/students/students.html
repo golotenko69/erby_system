@@ -19,14 +19,59 @@
     </div>
 
     <div class="page-actions">
-        <a href="{% url 'student_add' %}" class="btn-primary">
-            <span class="btn-icon">➕</span>
-            Добавить студента
-        </a>
+        <div class="actions-left">
+            <a href="{% url 'student_add' %}" class="btn-primary">
+                <span class="btn-icon">➕</span>
+                Добавить студента
+            </a>
+
+            <button type="button" class="btn-secondary" id="openExportModalBtn" style="margin-left: 10px; padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                <span class="btn-icon">📊</span> Сформировать отчет (Excel)
+            </button>
+        </div>
 
         <div class="search-box">
             <span class="search-icon">🔍</span>
             <input type="text" placeholder="Поиск студентов..." class="search-input" id="studentSearch">
+        </div>
+    </div>
+
+    <div id="exportModal" class="custom-modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+        <div class="modal-content" style="background-color: #fff; padding: 25px; border-radius: 8px; width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative;">
+            <span class="close-modal" id="closeExportModalBtn" style="position: absolute; right: 15px; top: 10px; font-size: 24px; cursor: pointer; color: #aaa;">&times;</span>
+            <h3 style="margin-top: 0; margin-bottom: 15px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">Настройка экспорта в Excel</h3>
+
+            <form action="{% url 'student_export_excel' %}" method="POST" id="exportForm">
+                {% csrf_token %}
+                <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Выберите разделы данных, которые необходимо включить в отчет:</p>
+
+                <div class="checkbox-group" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                    <label style="display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer;">
+                        <input type="checkbox" name="sections" value="base" checked readonly onclick="return false;">
+                        <strong>Основная информация (Обязательно)</strong>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer;">
+                        <input type="checkbox" name="sections" value="passport"> Паспортные данные
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer;">
+                        <input type="checkbox" name="sections" value="disability" checked> Данные об инвалидности и ОВЗ (МСЭ, ПМПК)
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer;">
+                        <input type="checkbox" name="sections" value="education"> Информация об обучении (прошлое и текущее)
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer;">
+                        <input type="checkbox" name="sections" value="employment"> Трудоустройство / ЦЗН
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer;">
+                        <input type="checkbox" name="sections" value="parents"> Сведения о родителях
+                    </label>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #eee; padding-top: 15px;">
+                    <button type="button" id="cancelExportBtn" style="padding: 8px 16px; background: #e0e0e0; border: none; border-radius: 4px; cursor: pointer;">Отмена</button>
+                    <button type="submit" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Скачать Excel</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -126,8 +171,8 @@
 
 
     <script>
-        // Простой поиск студентов
         document.addEventListener('DOMContentLoaded', function() {
+            // --- Существующий код поиска студентов ---
             const searchInput = document.getElementById('studentSearch');
             if (searchInput) {
                 searchInput.addEventListener('input', function() {
@@ -142,6 +187,44 @@
                             card.style.display = 'none';
                         }
                     });
+                });
+            }
+
+            // --- Логика Модального Окна Экспорта ---
+            const modal = document.getElementById('exportModal');
+            const openBtn = document.getElementById('openExportModalBtn');
+            const closeBtn = document.getElementById('closeExportModalBtn');
+            const cancelBtn = document.getElementById('cancelExportBtn');
+            const exportForm = document.getElementById('exportForm');
+
+            if (openBtn && modal) {
+                // Открыть модальное окно
+                openBtn.addEventListener('click', function() {
+                    modal.style.display = 'flex';
+                });
+
+                // Закрыть при нажатии на крестик
+                closeBtn.addEventListener('click', function() {
+                    modal.style.display = 'none';
+                });
+
+                // Закрыть при нажатии на "Отмена"
+                cancelBtn.addEventListener('click', function() {
+                    modal.style.display = 'none';
+                });
+
+                // Закрыть при клике вне зоны контента окна
+                window.addEventListener('click', function(event) {
+                    if (event.target === modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+
+                // Закрывать окно автоматически после отправки (начала скачивания)
+                exportForm.addEventListener('submit', function() {
+                    setTimeout(() => {
+                        modal.style.display = 'none';
+                    }, 500);
                 });
             }
         });

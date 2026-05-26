@@ -1,7 +1,9 @@
-from django.db import models
+
 
 # Create your models here.
 from django.db import models
+
+
 
 
 class Student(models.Model):
@@ -23,8 +25,6 @@ class Student(models.Model):
     birthday = models.DateField("Дата рождения")
     snils = models.CharField("СНИЛС", max_length=11, blank=True, null=True)
     inn = models.CharField("ИНН", max_length=12, blank=True, null=True)
-
-    # Связь с ответственными лицами (один куратор на многих студентов и наоборот)
 
 
     class Meta:
@@ -53,36 +53,104 @@ class Passport(models.Model):
 
 
 class EducationEnded(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='education_history')
-    education_type = models.CharField("Тип образования", max_length=49,
-                                      choices=[('общее', 'Общее'), ('среднее', 'Среднее')])
-    name = models.CharField("Название учреждения", max_length=100, blank=True, null=True)
-    education_document = models.CharField("Документ", max_length=100,
-                                          choices=[('свидетельство', 'Свидетельство'), ('аттестат', 'Аттестат')])
-    series = models.CharField("Серия/Номер", max_length=20, blank=True, null=True)
-    date_issued = models.DateField("Дата выдачи", blank=True, null=True)
+    student = models.OneToOneField(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='education_ended'
+    )
 
+    education_type = models.CharField(
+        "Тип образования",
+        max_length=49,
+        choices=[
+            ('общее', 'Общее'),
+            ('среднее', 'Среднее')
+        ]
+    )
+
+    name = models.CharField(
+        "Название учреждения",
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    education_document = models.CharField(
+        "Документ",
+        max_length=100,
+        choices=[
+            ('свидетельство', 'Свидетельство'),
+            ('аттестат', 'Аттестат')
+        ]
+    )
+
+    series = models.CharField(
+        "Серия/Номер",
+        max_length=20,
+        blank=True,
+        null=True
+    )
+
+    date_issued = models.DateField(
+        "Дата выдачи",
+        blank=True,
+        null=True
+    )
 class EducationInstitution(models.Model):
     name = models.CharField("Название", max_length=255)
+    last_seen = models.DateTimeField("Последний раз в сети", blank=True, null=True)
 
     def __str__(self):
         return self.name
 
 class EducationProcess(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='current_education')
+    student = models.OneToOneField(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='education_process'
+    )
+    created_at = models.DateTimeField("Дата добавления в учреждение", auto_now_add=True)
+
+
     education_institution = models.ForeignKey(
         EducationInstitution,
         on_delete=models.CASCADE,
         related_name='students'
     )
-    profession = models.CharField("Профессия", max_length=100, blank=True, null=True)
-    course = models.IntegerField("Курс", choices=[(i, str(i)) for i in range(1, 5)])
-    form = models.CharField("Форма обучения", max_length=20,
-                            choices=[('очная', 'Очная'), ('заочная', 'Заочная'), ('очно/заочная', 'Очно/заочная')])
-    term = models.IntegerField("Срок обучения (мес)", blank=True, null=True)
-    grad_date = models.DateField("Дата выпуска", blank=True, null=True)
 
+    profession = models.CharField(
+        "Профессия",
+        max_length=100,
+        blank=True,
+        null=True
+    )
 
+    course = models.IntegerField(
+        "Курс",
+        choices=[(i, str(i)) for i in range(1, 5)]
+    )
+
+    form = models.CharField(
+        "Форма обучения",
+        max_length=20,
+        choices=[
+            ('очная', 'Очная'),
+            ('заочная', 'Заочная'),
+            ('очно/заочная', 'Очно/заочная')
+        ]
+    )
+
+    term = models.IntegerField(
+        "Срок обучения (мес)",
+        blank=True,
+        null=True
+    )
+
+    grad_date = models.DateField(
+        "Дата выпуска",
+        blank=True,
+        null=True
+    )
 class Parent(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='parents')
     first_name = models.CharField("Имя", max_length=100, blank=True, null=True)
@@ -98,13 +166,7 @@ class DisabilityInfo(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE, primary_key=True, related_name='disability_info')
     status_ovz = models.CharField("Статус ОВЗ", max_length=3, choices=[('Да', 'Да'), ('Нет', 'Нет')])
     disability_group = models.CharField("Группа инвалидности", max_length=50, blank=True, null=True)
-    NOSOLOGY_CHOICES = [
-        ('аутизм', 'Аутизм'), ('ментальные нарушения (ЗПР)', 'ЗПР'),
-        ('нарушения опорно-двигательного аппарата (мобильные)', 'НОДА (мобильные)'),
-        ('потеря зрения', 'Потеря зрения'), ('потеря слуха', 'Потеря слуха'),
-        ('соматические заболевания', 'Соматические заболевания'), ('нарушения речи', 'Нарушения речи')
-    ]
-    nosology_type = models.CharField("Нозология", max_length=100, choices=NOSOLOGY_CHOICES)
+    nosology_type = models.CharField("Нозология", max_length=100, blank=True, null=True)
     year_removal = models.DateField("Дата снятия", blank=True, null=True)
 
 class Mse(models.Model):
@@ -130,22 +192,82 @@ class Pmpk(models.Model):
 
 
 class EducationTarget(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='targets')
-    agreement = models.CharField("Целевой договор", max_length=3, choices=[('Да', 'Да'), ('Нет', 'Нет')])
-    name_organization = models.CharField("Организация", max_length=100, blank=True, null=True)
-    abilimpiks = models.CharField("Участие в Абилимпикс", max_length=3, choices=[('Да', 'Да'), ('Нет', 'Нет')])
+    student = models.OneToOneField(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='education_target'
+    )
 
+    agreement = models.CharField(
+        "Целевой договор",
+        max_length=3,
+        choices=[('Да', 'Да'), ('Нет', 'Нет')]
+    )
+
+    name_organization = models.CharField(
+        "Организация",
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    abilimpiks = models.CharField(
+        "Участие в Абилимпикс",
+        max_length=3,
+        choices=[('Да', 'Да'), ('Нет', 'Нет')]
+    )
 
 class Employment(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='employment')
-    employment_status = models.CharField("Трудоустроен", max_length=3, choices=[('Да', 'Да'), ('Нет', 'Нет')])
-    place_job = models.CharField("Место работы", max_length=150, blank=True, null=True)
-    position = models.CharField("Должность", max_length=100, blank=True, null=True)
-    hiring_date = models.DateField("Дата приема", blank=True, null=True)
-    reason_not_employment = models.CharField("Причина нетрудоустройства", max_length=200, blank=True, null=True)
-    accounting_employment = models.CharField("Состоит в ЦЗН", max_length=3, choices=[('Да', 'Да'), ('Нет', 'Нет')])
-    resume_status = models.CharField("Резюме создано", max_length=3, choices=[('Да', 'Да'), ('Нет', 'Нет')])
+    student = models.OneToOneField(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='employment'
+    )
 
+    employment_status = models.CharField(
+        "Трудоустроен",
+        max_length=3,
+        choices=[('Да', 'Да'), ('Нет', 'Нет')]
+    )
+
+    place_job = models.CharField(
+        "Место работы",
+        max_length=150,
+        blank=True,
+        null=True
+    )
+
+    position = models.CharField(
+        "Должность",
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    hiring_date = models.DateField(
+        "Дата приема",
+        blank=True,
+        null=True
+    )
+
+    reason_not_employment = models.CharField(
+        "Причина нетрудоустройства",
+        max_length=200,
+        blank=True,
+        null=True
+    )
+
+    accounting_employment = models.CharField(
+        "Состоит в ЦЗН",
+        max_length=3,
+        choices=[('Да', 'Да'), ('Нет', 'Нет')]
+    )
+
+    resume_status = models.CharField(
+        "Резюме создано",
+        max_length=3,
+        choices=[('Да', 'Да'), ('Нет', 'Нет')]
+    )
 
 class ResponsiblePerson(models.Model):
     first_name = models.CharField("Имя", max_length=100)
@@ -163,3 +285,25 @@ class ResponsiblePerson(models.Model):
         return f"{self.last_name} ({self.position})"
 
 
+class StudentLog(models.Model):
+    ACTION_CHOICES = [
+        ('CREATE', 'Добавление'),
+        ('UPDATE', 'Редактирование'),
+        ('DELETE', 'Удаление'),
+    ]
+
+    action = models.CharField("Действие", max_length=10, choices=ACTION_CHOICES)
+    student_name = models.CharField("ФИО Студента", max_length=300)
+    user = models.ForeignKey('users.CustomUser', on_delete=models.SET_NULL, null=True, verbose_name="Кто изменил")
+    institution_name = models.CharField("Учреждение", max_length=255, blank=True, null=True)
+    changes = models.TextField("Подробности изменений", blank=True, null=True)
+    created_at = models.DateTimeField("Дата и время", auto_now_add=True)
+    is_read = models.BooleanField("Прочитано", default=False)
+
+    class Meta:
+        verbose_name = "Лог изменений студента"
+        verbose_name_plural = "Логи изменений студентов"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_action_display()} - {self.student_name}"

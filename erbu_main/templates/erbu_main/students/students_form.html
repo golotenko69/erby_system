@@ -29,30 +29,7 @@
     <hr>
     <!-- ТЕКУЩЕЕ ОБРАЗОВАНИЕ -->
     <h3>Текущее образование</h3>
-    {{ edu_proc_formset.management_form }}
-
-    <div id="edu_proc-forms">
-        {% for f in edu_proc_formset %}
-            <div class="form-block edu-proc-form">
-                {{ f.as_p }}
-                {% if edu_proc_formset.can_delete %}
-                    <div class="delete-checkbox">
-                        {{ f.DELETE }}
-                        <label for="{{ f.DELETE.id_for_label }}">Удалить</label>
-                    </div>
-
-                {% endif %}
-            </div>
-        {% endfor %}
-    </div>
-
-    <div id="edu_proc-empty-form" style="display:none;">
-        <div class="form-block edu-proc-form">
-            {{ edu_proc_formset.empty_form.as_p }}
-        </div>
-    </div>
-
-    <button type="button" class="add-btn" onclick="addForm('edu_proc')">+ Добавить текущее образование</button>
+    {{ edu_proc_form.as_p }}
 
     <hr>
     <!-- РОДИТЕЛИ -->
@@ -82,78 +59,17 @@
 
     <!-- ОБРАЗОВАНИЕ (оконченное) -->
     <h3>Оконченное образование</h3>
-    {{ edu_end_formset.management_form }}
-
-    <div id="edu_end-forms">
-        {% for f in edu_end_formset %}
-            <div class="form-block edu-end-form">
-                {{ f.as_p }}
-                {% if edu_end_formset.can_delete %}
-                    {{ f.DELETE }} <label for="{{ f.DELETE.id_for_label }}">Удалить</label>
-                {% endif %}
-            </div>
-        {% endfor %}
-    </div>
-
-    <div id="edu_end-empty-form" style="display:none;">
-        <div class="form-block edu-end-form">
-            {{ edu_end_formset.empty_form.as_p }}
-        </div>
-    </div>
-
-    <button type="button" class="add-btn" onclick="addForm('edu_end')">+ Добавить образование</button>
-
+    {{ edu_end_form.as_p }}
     <hr>
-
-
-
     <!-- ЦЕЛЕВОЕ ОБРАЗОВАНИЕ -->
     <h3>Целевое образование</h3>
-    {{ edu_tar_formset.management_form }}
-
-    <div id="edu_tar-forms">
-        {% for f in edu_tar_formset %}
-            <div class="form-block edu-tar-form">
-                {{ f.as_p }}
-                {% if edu_tar_formset.can_delete %}
-                    {{ f.DELETE }} <label for="{{ f.DELETE.id_for_label }}">Удалить</label>
-                {% endif %}
-            </div>
-        {% endfor %}
-    </div>
-
-    <div id="edu_tar-empty-form" style="display:none;">
-        <div class="form-block edu-tar-form">
-            {{ edu_tar_formset.empty_form.as_p }}
-        </div>
-    </div>
-
-    <button type="button" class="add-btn" onclick="addForm('edu_tar')">+ Добавить целевое обучение</button>
+    {{ edu_tar_form.as_p }}
 
     <hr>
 
     <!-- ТРУДОУСТРОЙСТВО -->
     <h3>Трудоустройство</h3>
-    {{ employment_formset.management_form }}
-
-    <div id="employment-forms">
-        {% for f in employment_formset %}
-            <div class="form-block employment-form">
-                {{ f.as_p }}
-                {% if employment_formset.can_delete %}
-                    {{ f.DELETE }} <label for="{{ f.DELETE.id_for_label }}">Удалить</label>
-                {% endif %}
-            </div>
-        {% endfor %}
-    </div>
-
-    <div id="employment-empty-form" style="display:none;">
-        <div class="form-block employment-form">
-            {{ employment_formset.empty_form.as_p }}
-        </div>
-    </div>
-
-    <button type="button" class="add-btn" onclick="addForm('employment')">+ Добавить трудоустройство</button>
+    {{ employment_form.as_p }}
 
     <hr>
 
@@ -180,18 +96,17 @@ function addForm(prefix) {
 
 // Автодобавление одной формы если нет данных
 document.addEventListener("DOMContentLoaded", function () {
-    const prefixes = ['parent', 'edu_end', 'edu_proc', 'edu_tar', 'employment'];
+    const prefix = 'parent'; // Оставляем только parent, так как это единственный формсет
 
-    prefixes.forEach(prefix => {
-        const initialInput = document.getElementById(`id_${prefix}-INITIAL_FORMS`);
-        const totalInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
-        const formsContainer = document.getElementById(`${prefix}-forms`);
+    const initialInput = document.getElementById(`id_${prefix}-INITIAL_FORMS`);
+    const totalInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+    const formsContainer = document.getElementById(`${prefix}-forms`);
 
-        // Если нет начальных форм и контейнер пуст
+    if (initialInput && totalInput && formsContainer) {
         if (parseInt(initialInput.value) === 0 && formsContainer.children.length === 0) {
             addForm(prefix);
         }
-    });
+    }
 });
 </script>
 

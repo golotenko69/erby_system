@@ -75,50 +75,51 @@
 
     {# Образование (оконченное) #}
     <div class="student-detail-section">
-        <h3>🎓 Образование (оконченное)</h3>
-        {% for edu in education_ended %}
-            <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
-                <p><strong>{{ edu.name|default:"Не указано" }}</strong></p>
-                <p>Тип: {{ edu.get_education_type_display|default:"—" }}</p>
-                <p>Документ: {{ edu.get_education_document_display|default:"—" }}</p>
-                <p>Серия/Номер: {{ edu.series|default:"—" }}</p>
-                <p>Дата выдачи: {{ edu.date_issued|date:"d.m.Y"|default:"—" }}</p>
-            </div>
-        {% empty %}
-            <p style="color: #94a3b8;">Нет данных об оконченном образовании</p>
-        {% endfor %}
-    </div>
+    <h3>🎓 Образование (оконченное)</h3>
+
+    {% if education_ended %}
+        <div style="margin-bottom: 15px;">
+            <p><strong>{{ education_ended.name|default:"Не указано" }}</strong></p>
+            <p>Тип: {{ education_ended.get_education_type_display|default:"—" }}</p>
+            <p>Документ: {{ education_ended.get_education_document_display|default:"—" }}</p>
+            <p>Серия/Номер: {{ education_ended.series|default:"—" }}</p>
+            <p>Дата выдачи: {{ education_ended.date_issued|date:"d.m.Y"|default:"—" }}</p>
+        </div>
+    {% else %}
+        <p style="color: #94a3b8;">Нет данных об оконченном образовании</p>
+    {% endif %}
+</div>
 
     {# Текущее образование #}
     <div class="student-detail-section">
-        <h3>📚 Текущее образование</h3>
-        {% for edu in education_process %}
-            <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
-                <p><strong>{{ edu.education_institution.name|default:"Не указано" }}</strong></p>
-                <p>Профессия: {{ edu.profession|default:"—" }}</p>
-                <p>Курс: {{ edu.course|default:"—" }}</p>
-                <p>Форма обучения: {{ edu.get_form_display|default:"—" }}</p>
-                <p>Срок обучения: {{ edu.term|default:"—" }} мес.</p>
-                <p>Дата выпуска: {{ edu.grad_date|date:"d.m.Y"|default:"—" }}</p>
-            </div>
-        {% empty %}
-            <p style="color: #94a3b8;">Нет данных о текущем образовании</p>
-        {% endfor %}
-    </div>
+    <h3>📚 Текущее образование</h3>
+
+    {% if education_process %}
+        <div style="margin-bottom: 15px;">
+            <p><strong>{{ education_process.education_institution.name|default:"Не указано" }}</strong></p>
+            <p>Профессия: {{ education_process.profession|default:"—" }}</p>
+            <p>Курс: {{ education_process.course|default:"—" }}</p>
+            <p>Форма обучения: {{ education_process.get_form_display|default:"—" }}</p>
+            <p>Срок обучения: {{ education_process.term|default:"—" }} мес.</p>
+            <p>Дата выпуска: {{ education_process.grad_date|date:"d.m.Y"|default:"—" }}</p>
+        </div>
+    {% else %}
+        <p style="color: #94a3b8;">Нет данных о текущем образовании</p>
+    {% endif %}
+</div>
 
     {# Целевое обучение #}
     <div class="student-detail-section">
-        <h3>🎯 Целевое обучение</h3>
-        {% for target in student.targets.all %}
-            <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
-                <p><strong>Договор:</strong> {{ target.agreement }}</p>
-                <p><strong>Организация:</strong> {{ target.name_organization|default:"—" }}</p>
-                <p><strong>Абилимпикс:</strong> {{ target.abilimpiks }}</p>
-            </div>
-        {% empty %}
-            <p style="color: #94a3b8;">Нет данных о целевом обучении</p>
-        {% endfor %}
-    </div>
+    <h3>🎯 Целевое обучение</h3>
+
+    {% if education_target %}
+        <p><strong>Договор:</strong> {{ education_target.agreement }}</p>
+        <p><strong>Организация:</strong> {{ education_target.name_organization|default:"—" }}</p>
+        <p><strong>Абилимпикс:</strong> {{ education_target.abilimpiks }}</p>
+    {% else %}
+        <p style="color: #94a3b8;">Нет данных о целевом обучении</p>
+    {% endif %}
+</div>
 
     {# Родители #}
     <div class="student-detail-section">
@@ -136,46 +137,27 @@
 
     {# Трудоустройство #}
     <div class="student-detail-section">
-        <h3>💼 Трудоустройство</h3>
-        {% for job in employment %}
-            <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
-                <p><strong>Статус:</strong>
-                    {% if job.employment_status == 'Да' %}
-                        <span style="color: #16a34a;">Трудоустроен</span>
-                    {% else %}
-                        <span style="color: #dc2626;">Не трудоустроен</span>
-                    {% endif %}
-                </p>
-                <p><strong>Место работы:</strong> {{ job.place_job|default:"—" }}</p>
-                <p><strong>Должность:</strong> {{ job.position|default:"—" }}</p>
-                <p><strong>Дата приема:</strong> {{ job.hiring_date|date:"d.m.Y"|default:"—" }}</p>
-                <p><strong>Причина нетрудоустройства:</strong> {{ job.reason_not_employment|default:"—" }}</p>
-                <p><strong>Состоит в ЦЗН:</strong> {{ job.accounting_employment }}</p>
-                <p><strong>Резюме создано:</strong> {{ job.resume_status }}</p>
-            </div>
-        {% empty %}
-            <p style="color: #94a3b8;">Нет данных о трудоустройстве</p>
-        {% endfor %}
-    </div>
+    <h3>💼 Трудоустройство</h3>
 
-    {# Ответственные лица #}
-    <div class="student-detail-section">
-        <h3>👤 Ответственные лица</h3>
-        {% for person in student.responsible_persons.all %}
-            <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
-                <p><strong>{{ person.last_name }} {{ person.first_name }} {{ person.middle_name|default:"" }}</strong></p>
-                <p>Должность: {{ person.position|default:"—" }}</p>
-                <p>Телефон: {{ person.phone|default:"—" }}</p>
-                <p>Email: {{ person.email|default:"—" }}</p>
-            </div>
-        {% empty %}
-            <p style="color: #94a3b8;">Нет ответственных лиц</p>
-        {% endfor %}
-    </div>
+    {% if employment %}
+        <p><strong>Статус:</strong>
+            {% if employment.employment_status == 'Да' %}
+                <span style="color: #16a34a;">Трудоустроен</span>
+            {% else %}
+                <span style="color: #dc2626;">Не трудоустроен</span>
+            {% endif %}
+        </p>
 
-    <div class="action-links">
-        <a href="{% url 'students' %}" class="btn-back">← Назад к списку</a>
-        <a href="{% url 'student_edit' student_id=student.pk %}" class="btn-back">✏️ Редактировать</a>
-        <a href="{% url 'student_delete' student_id=student.pk %}" class="btn-delete">🗑️ Удалить</a>
-    </div>
+        <p><strong>Место работы:</strong> {{ employment.place_job|default:"—" }}</p>
+        <p><strong>Должность:</strong> {{ employment.position|default:"—" }}</p>
+        <p><strong>Дата приема:</strong> {{ employment.hiring_date|date:"d.m.Y"|default:"—" }}</p>
+        <p><strong>Причина нетрудоустройства:</strong> {{ employment.reason_not_employment|default:"—" }}</p>
+        <p><strong>Состоит в ЦЗН:</strong> {{ employment.accounting_employment }}</p>
+        <p><strong>Резюме создано:</strong> {{ employment.resume_status }}</p>
+
+    {% else %}
+        <p style="color: #94a3b8;">Нет данных о трудоустройстве</p>
+    {% endif %}
+</div>
+
 {% endblock %}

@@ -9,8 +9,7 @@ from erbu_main.models import EducationInstitution
 class CustomUser(AbstractUser):
 
     class Role(models.TextChoices):
-        STUDENT = 'STUDENT', 'Студент'
-        TEACHER = 'TEACHER', 'Преподаватель'
+        TEACHER = 'TEACHER', 'Ответственное лицо'
         ADMIN = 'ADMIN', 'Администратор'
 
     role = models.CharField(max_length=50, choices=Role.choices)
@@ -22,3 +21,10 @@ class CustomUser(AbstractUser):
         blank=True,
         verbose_name="Учебное заведение"
     )
+
+    # Новые поля для данных ответственного лица
+    middle_name = models.CharField('Отчество', max_length=150, blank=True)
+    phone = models.CharField('Телефон', max_length=20, blank=True)
+    # Поле для отображения сгенерированного пароля администратору
+
+    raw_password = models.CharField('Сгенерированный пароль', max_length=128, blank=True)
