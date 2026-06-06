@@ -22,6 +22,7 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 # Копируем весь код проекта в контейнер
 COPY . .
+RUN python manage.py collectstatic --noinpu
 
 # Открываем порт 8000 (на нем будет слушать Gunicorn)
 EXPOSE 8000
