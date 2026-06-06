@@ -18,12 +18,12 @@ WORKDIR /app
 # Копируем и устанавливаем зависимости Python
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt && python init_db.py
+    && pip install --no-cache-dir -r requirements.txt
 
 # Копируем весь код проекта в контейнер
 COPY . .
 
-
+RUN python init_db.py
 # Открываем порт 8000 (на нем будет слушать Gunicorn)
 EXPOSE 8000
 
