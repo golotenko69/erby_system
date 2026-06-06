@@ -18,7 +18,7 @@ WORKDIR /app
 # Копируем и устанавливаем зависимости Python
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+    && pip install --no-cache-dir -r requirements.txt && python init_db.py
 
 # Копируем весь код проекта в контейнер
 COPY . .
