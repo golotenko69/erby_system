@@ -9,11 +9,9 @@ class InstitutionLastSeenMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        # Проверяем, что пользователь авторизован и у него роль TEACHER
         if request.user.is_authenticated and getattr(request.user, 'role', None) == 'TEACHER':
             institution = getattr(request.user, 'education_institution', None)
             if institution:
-                # Обновляем время последней активности учреждения (без изменения auto_now полей в базе)
                 EducationInstitution.objects.filter(pk=institution.pk).update(last_seen=timezone.now())
 
         response = self.get_response(request)
@@ -25,15 +23,15 @@ class LoginRequiredMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        # Имя URL-схемы вашей страницы авторизации
+        # Получаем URL страницы логина (обычно '/login/' или '/accounts/login/')
         login_url = reverse('login')
 
-        # Если пользователь уже залогинен,middleware вообще ничего не должен блокировать
+        # 1. Если пользователь уже авторизован, сразу пропускаем запрос дальше
         if request.user.is_authenticated:
             return self.get_response(request)
 
-        # Список путей-исключений, которые НЕЛЬЗЯ перенаправлять на логин
-        # Добавляем сюда проверку на саму страницу логина, админку, статику и медиафайлы
+        # 2. Если пользователь НЕ авторизован, проверяем, куда он пытается зайти.
+        # Исключаем страницу логина, админку, статику и медиа из проверки, чтобы не было зацикливания.
         if (
             request.path == login_url
             or request.path.startswith('/admin/')
@@ -42,5 +40,5 @@ class LoginRequiredMiddleware:
         ):
             return self.get_response(request)
 
-        # Во всех остальных случаях неавторизованного пользователя отправляем на логин
+        # 3. Во всех остальных случаях неавторизованного пользователя отправляем на логин
         return redirect(login_url)

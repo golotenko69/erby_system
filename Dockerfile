@@ -22,9 +22,8 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 # Копируем весь код проекта в контейнер
 COPY . .
-
+RUN chmod +x entrypoint.sh
 
 # Открываем порт 8000 (на нем будет слушать Gunicorn)
 EXPOSE 8000
-
-CMD ["gunicorn", "django_erbu.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+CMD ["./entrypoint.sh"]
