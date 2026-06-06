@@ -92,21 +92,31 @@ WSGI_APPLICATION = 'django_erbu.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'mssql',
-        'NAME': env('DB_NAME', default='StudentsRegionalBases'),
-        'USER': env('DB_USER', default='sa'),
-        'PASSWORD': env('DB_PASSWORD', default='Voteb1579k)'),
-        'HOST': env('DB_HOST', default='127.0.0.1'),
-        'PORT': env('DB_PORT', default='1433'),
-        'OPTIONS': {
-            'driver': 'ODBC Driver 18 for SQL Server',
-            'extra_params': 'TrustServerCertificate=yes;',
-            # TrustServerCertificate необходим, если у контейнера MSSQL нет SSL-сертификата
-        },
+# Если мы передали переменную DB_HOST (локально в Docker), используем MS SQL Server
+if env('DB_HOST', default=None):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'mssql',
+            'NAME': env('DB_NAME'),
+            'USER': env('DB_USER'),
+            'PASSWORD': env('DB_PASSWORD'),
+            'HOST': env('DB_HOST'),
+            'PORT': env('DB_PORT', default='1433'),
+            'OPTIONS': {
+                'driver': 'ODBC Driver 18 for SQL Server',
+                'Encrypt': 'yes',
+                'TrustServerCertificate': 'yes',
+            },
+        }
     }
-}
+else:
+    # Если переменной нет (на Render), автоматически включается временная SQLite
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
