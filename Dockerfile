@@ -22,8 +22,8 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 # Копируем весь код проекта в контейнер
 COPY . .
-RUN chmod +x entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # Открываем порт 8000 (на нем будет слушать Gunicorn)
 EXPOSE 8000
-CMD ["./entrypoint.sh"]
+CMD ["/app/entrypoint.sh"]
