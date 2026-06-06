@@ -1,0 +1,17 @@
+/* ==========================================================================
+   institutions-list.css — Страница списка учебных заведений
+   ========================================================================== */
+
+.institution-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+    transition: border-color var(--transition-fast), background var(--transition-fast);
+    margin-bottom: 8px;
+}
+
+.institution-card:hover {
+    border-color: var(--color-border-strong);
+    background: var(--color-surface-alt);
+}

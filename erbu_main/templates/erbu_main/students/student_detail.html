@@ -7,7 +7,7 @@
 
     {# Основная информация #}
     <div class="student-detail-section">
-        <h3>📝 Основная информация</h3>
+        <h3> Основная информация</h3>
         <p><strong>Пол:</strong> {{ student.get_sex_display }}</p>
         <p><strong>Дата рождения:</strong> {{ student.birthday|date:"d.m.Y" }}</p>
         <p><strong>Статус:</strong> {{ student.get_status_display }}</p>
@@ -19,7 +19,7 @@
 
     {# Паспорт #}
     <div class="student-detail-section">
-        <h3>📋 Паспорт</h3>
+        <h3> Паспорт</h3>
         {% if passport %}
             <p><strong>Серия:</strong> {{ passport.series|default:"—" }}</p>
             <p><strong>Номер:</strong> {{ passport.number|default:"—" }}</p>
@@ -35,7 +35,7 @@
 
     {# Инвалидность #}
     <div class="student-detail-section">
-        <h3>🏥 Инвалидность</h3>
+        <h3> Инвалидность</h3>
         {% if disability %}
             <p><strong>ОВЗ:</strong>
                 {% if disability.status_ovz == 'Да' %}
@@ -49,7 +49,7 @@
             <p><strong>Дата снятия:</strong> {{ disability.year_removal|date:"d.m.Y"|default:"Не указана" }}</p>
 
             {# МСЭ #}
-            <h4 style="margin-top: 16px;">📄 МСЭ</h4>
+            <h4 style="margin-top: 16px;"> МСЭ</h4>
             {% if mse %}
                 <p><strong>Серия:</strong> {{ mse.series|default:"—" }}</p>
                 <p><strong>Номер:</strong> {{ mse.number|default:"—" }}</p>
@@ -60,7 +60,7 @@
             {% endif %}
 
             {# ПМПК #}
-            <h4 style="margin-top: 16px;">📋 ПМПК</h4>
+            <h4 style="margin-top: 16px;"> ПМПК</h4>
             {% if pmpk %}
                 <p><strong>Номер заключения:</strong> {{ pmpk.number|default:"—" }}</p>
                 <p><strong>Дата выдачи:</strong> {{ pmpk.date_issued|date:"d.m.Y"|default:"—" }}</p>
@@ -75,7 +75,7 @@
 
     {# Образование (оконченное) #}
     <div class="student-detail-section">
-    <h3>🎓 Образование (оконченное)</h3>
+    <h3> Образование (оконченное)</h3>
 
     {% if education_ended %}
         <div style="margin-bottom: 15px;">
@@ -92,7 +92,7 @@
 
     {# Текущее образование #}
     <div class="student-detail-section">
-    <h3>📚 Текущее образование</h3>
+    <h3> Текущее образование</h3>
 
     {% if education_process %}
         <div style="margin-bottom: 15px;">
@@ -110,7 +110,7 @@
 
     {# Целевое обучение #}
     <div class="student-detail-section">
-    <h3>🎯 Целевое обучение</h3>
+    <h3> Целевое обучение</h3>
 
     {% if education_target %}
         <p><strong>Договор:</strong> {{ education_target.agreement }}</p>
@@ -123,7 +123,7 @@
 
     {# Родители #}
     <div class="student-detail-section">
-        <h3>👪 Родители</h3>
+        <h3> Родители</h3>
         {% for parent in parents %}
             <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
                 <p><strong>{{ parent.last_name|default:"" }} {{ parent.first_name|default:"" }} {{ parent.middle_name|default:"" }}</strong></p>
@@ -137,7 +137,7 @@
 
     {# Трудоустройство #}
     <div class="student-detail-section">
-    <h3>💼 Трудоустройство</h3>
+    <h3> Трудоустройство</h3>
 
     {% if employment %}
         <p><strong>Статус:</strong>

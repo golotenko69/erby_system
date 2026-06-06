@@ -1,6 +1,66 @@
 {% extends 'base.html' %}
 {% block title %}Главная - ЕРБУ{% endblock %}
+
 {% block content %}
-    <h1>Добро пожаловать в Единую региональную базу учета</h1>
-    <p>Здесь содержится информация о студентах инвалидах Забайкальского края</p>
+<div class="welcome-container" style="max-width: 1000px; margin: 0 auto; padding: 20px; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+
+    <!-- Приветственная панель -->
+    <div class="welcome-card" style="background: #ffffff; border-radius: 12px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-left: 6px solid #2563eb; margin-bottom: 25px;">
+        <h1 style="color: #1e3a8a; margin-top: 0; margin-bottom: 10px; font-size: 2.2rem; font-weight: 700;">
+            Добро пожаловать в Единую региональную базу учета (ЕРБУ)
+        </h1>
+        <p style="color: #4b5563; font-size: 1.15rem; line-height: 1.6; margin-bottom: 0;">
+            <strong>ЕРБУ</strong> — это единая цифровая платформа для Забайкальского края, предназначенная для ведения централизованного учета, мониторинга обучения и содействия трудоустройству студентов с ограниченными возможностями здоровья (ОВЗ) и инвалидностью.
+        </p>
+    </div>
+
+    <!-- Краткое руководство для нового сотрудника -->
+    <h2 style="color: #1e293b; font-size: 1.5rem; font-weight: 600; margin-top: 35px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
+        🚀 Быстрый старт: Как работать с системой?
+    </h2>
+
+    <div class="guide-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 35px;">
+
+        <!-- Шаг 1: Студенты -->
+        <div class="step-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+            <div style="font-size: 1.8rem; margin-bottom: 10px;">👨‍🎓</div>
+            <h3 style="color: #2563eb; font-size: 1.2rem; margin-top: 0; margin-bottom: 10px; font-weight: 600;">Вкладка «Студенты»</h3>
+            <p style="color: #4b5563; font-size: 0.95rem; line-height: 1.5; margin: 0;">
+                Здесь вы можете <strong>добавлять новых студентов</strong>, редактировать личные дела, вносить данные паспорта, инвалидности (МСЭ, ПМПК), информацию об учебе и сведения о родителях.
+            </p>
+        </div>
+
+        <!-- Шаг 2: Отчеты -->
+        <div class="step-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+            <div style="font-size: 1.8rem; margin-bottom: 10px;">📊</div>
+            <h3 style="color: #16a34a; font-size: 1.2rem; margin-top: 0; margin-bottom: 10px; font-weight: 600;">Конструктор отчетов</h3>
+            <p style="color: #4b5563; font-size: 0.95rem; line-height: 1.5; margin: 0;">
+                Нажмите кнопку <strong>«Сформировать отчет (Excel)»</strong> в журнале студентов, выберите галочками нужные для выгрузки поля, и система автоматически создаст готовый аналитический файл.
+            </p>
+        </div>
+
+        <!-- Шаг 3: Трудоустройство -->
+        <div class="step-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+            <div style="font-size: 1.8rem; margin-bottom: 10px;">💼</div>
+            <h3 style="color: #ea580c; font-size: 1.2rem; margin-top: 0; margin-bottom: 10px; font-weight: 600;">Мониторинг занятости</h3>
+            <p style="color: #4b5563; font-size: 0.95rem; line-height: 1.5; margin: 0;">
+                В карточке каждого студента предусмотрен специальный блок для контроля его <strong>трудоустройства</strong> после выпуска (или указания официальной причины, если он не трудоустроен).
+            </p>
+        </div>
+
+    </div>
+    {% if user.role == 'ADMIN' %}
+        <!-- Раздел Администратора (отображается справочно) -->
+        <div class="admin-notice" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin-top: 25px;">
+            <h4 style="color: #475569; font-size: 1.05rem; margin-top: 0; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                🔑 Информация для Администраторов региона
+            </h4>
+            <ul style="color: #64748b; font-size: 0.95rem; line-height: 1.6; margin: 0; padding-left: 20px;">
+                <li>Вам доступна <strong>панель уведомлений</strong> (журнал аудита действий) для отслеживания любых обновлений данных в реальном времени.</li>
+                <li>Вы можете управлять <strong>учетными записями учебных заведений</strong> и создавать новые аккаунты для ответственных сотрудников (логины и пароли генерируются автоматически).</li>
+            </ul>
+        </div>
+    {% endif %}
+
+</div>
 {% endblock %}

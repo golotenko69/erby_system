@@ -1,0 +1,51 @@
+/* ==========================================================================
+   forms.css — Поля ввода, лейблы, блоки форм
+   ========================================================================== */
+
+input, select, textarea {
+    width: 100%;
+    max-width: 500px;
+    padding: 7px 10px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    margin-top: 4px;
+    margin-bottom: 12px;
+    font-family: inherit;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: var(--shadow-focus);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+    background-color: var(--color-surface-muted);
+    color: var(--color-text-subtle);
+    cursor: not-allowed;
+}
+
+label {
+    font-weight: 500;
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+    display: block;
+    margin-bottom: 2px;
+}
+
+/* --- Блок-обёртка для подформы (родители и т.д.) --- */
+.form-block {
+    background: var(--color-surface-alt);
+    padding: 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    margin-bottom: 12px;
+}

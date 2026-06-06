@@ -9,26 +9,40 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
-
+import os
 from pathlib import Path
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Инициализируем environ
+env = environ.Env(
+    # Указываем значения по умолчанию и типы данных
+    DEBUG=(bool, False),
+    ALLOWED_HOSTS=(list, ['localhost', '127.0.0.1']),
+)
+
+# Если рядом есть файл .env, читаем его (полезно для локальной разработки без Docker)
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-_m5@$5u$uaj*+s49sy85f05j48p4)i2gh&^hfml%f-&ps^2^(p'
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env('ALLOWED_HOSTS')
 
 
 # Application definition
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://procedure-quarry-armed.ngrok-free.dev',
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -80,14 +94,15 @@ WSGI_APPLICATION = 'django_erbu.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'mssql',
-        'NAME': 'StudentsRegionalBase',
-        'HOST': '127.0.0.1',  # Используйте IP вместо localhost для исключения проблем с IPv6
-        'PORT': '1433',
+        'NAME': env('DB_NAME', default='StudentsRegionalBases'),
+        'USER': env('DB_USER', default='sa'),
+        'PASSWORD': env('DB_PASSWORD', default='Voteb1579k)'),
+        'HOST': env('DB_HOST', default='127.0.0.1'),
+        'PORT': env('DB_PORT', default='1433'),
         'OPTIONS': {
             'driver': 'ODBC Driver 18 for SQL Server',
-            'extra_params': 'Trusted_Connection=yes;TrustServerCertificate=yes',
-            # Если используете mssql-django, лучше явно указать:
-            'host_is_server': True,
+            'extra_params': 'TrustServerCertificate=yes;',
+            # TrustServerCertificate необходим, если у контейнера MSSQL нет SSL-сертификата
         },
     }
 }
@@ -131,7 +146,13 @@ STATIC_URL = '/static/'
 
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
+
 ]
+
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 LOGIN_REDIRECT_URL = 'index'
 LOGOUT_REDIRECT_URL = '/'
@@ -139,3 +160,14 @@ LOGOUT_REDIRECT_URL = '/'
 LOGIN_URL = 'login'
 
 AUTH_USER_MODEL = 'users.CustomUser'
+
+# Если проект работает за прокси-сервером (Nginx или Ngrok),
+# эта настройка помогает Django правильно понимать, что запрос пришел по HTTPS
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# На локальной машине при DEBUG=True строгие редиректы на HTTPS лучше отключить,
+# но на продакшене они включатся автоматически, если настроить переменные.
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True

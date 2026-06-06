@@ -1,0 +1,136 @@
+/* ==========================================================================
+   notifications.css — Колокольчик уведомлений в навигации
+   ========================================================================== */
+
+.notifications-dropdown {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 4px;
+}
+
+.dropdown-btn {
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border-strong);
+    padding: 5px 10px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.8125rem;
+    font-family: inherit;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    transition: all var(--transition-fast);
+}
+
+.dropdown-btn:hover {
+    background: var(--color-surface-muted);
+    color: var(--color-text-strong);
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    background-color: var(--color-surface);
+    width: 360px;
+    box-shadow: var(--shadow-dropdown);
+    z-index: 1000;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.notifications-dropdown:hover .dropdown-content {
+    display: block;
+}
+
+/* --- Элемент уведомления --- */
+.dropdown-item {
+    color: var(--color-text);
+    padding: 10px 14px;
+    text-decoration: none;
+    display: block;
+    border-bottom: 1px solid var(--color-border-muted);
+    text-align: left;
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item:hover {
+    background-color: var(--color-surface-alt);
+}
+
+.dropdown-item-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-bottom: 4px;
+    word-break: break-word;
+}
+
+.dropdown-item-header strong {
+    font-size: 0.8125rem;
+    color: var(--color-text-strong);
+    line-height: 1.3;
+    font-weight: 600;
+}
+
+.dropdown-item-body {
+    font-size: 0.6875rem;
+    color: var(--color-text-subtle);
+    line-height: 1.5;
+}
+
+.dropdown-item-body div {
+    margin-top: 1px;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.dropdown-item.empty {
+    text-align: center;
+    color: var(--color-text-faded);
+    padding: 20px;
+    font-size: 0.8125rem;
+}
+
+/* --- Кликабельное уведомление --- */
+.log-item-click {
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.log-item-click:hover {
+    background-color: var(--color-surface-muted);
+}
+
+.dropdown-item.unread-log {
+    background-color: var(--color-accent-bg);
+    transition: background-color 1s ease;
+}
+
+/* --- Тонкий скроллбар --- */
+.dropdown-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dropdown-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.dropdown-content::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 3px;
+}
+
+.dropdown-content::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-faded);
+}

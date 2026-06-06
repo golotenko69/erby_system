@@ -1,0 +1,12 @@
+/* ==========================================================================
+   footer.css — Подвал приложения
+   ========================================================================== */
+
+.app-footer {
+    padding: 12px 24px;
+    background-color: var(--color-surface-alt);
+    border-top: 1px solid var(--color-border);
+    text-align: center;
+    color: var(--color-text-subtle);
+    font-size: 0.8125rem;
+}

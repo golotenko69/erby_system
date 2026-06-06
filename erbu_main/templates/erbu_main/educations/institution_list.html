@@ -3,7 +3,7 @@
 {% block title %}Учебные заведения - Журнал{% endblock %}
 
 {% block content %}
-    <h1>🏛️ Учебные заведения</h1>
+    <h1> Учебные заведения</h1>
     <p style="color: #64748b; font-size: 1.1rem; margin-bottom: 8px;">Колледжи и образовательные учреждения</p>
 
     <a href="{% url 'institution_add' %}" class="add-student-btn">Добавить учебное заведение</a>
@@ -22,7 +22,7 @@
                     <div style="display: flex; flex-direction: column; gap: 8px; color: #64748b; font-size: 0.9rem;">
                         <div style="display: flex; gap: 20px;">
                             <span>👥 Всего студентов: <strong>{{ institution.student_count }}</strong></span>
-                            <span>🆔 ID: {{ institution.pk }}</span>
+
                         </div>
 
                         {# Блок специально для Администратора #}

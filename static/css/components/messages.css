@@ -1,0 +1,42 @@
+/* ==========================================================================
+   messages.css — Уведомления Django messages
+   ========================================================================== */
+
+.messages-container {
+    padding: 12px 24px 0 24px;
+}
+
+.message {
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+    font-weight: 500;
+    font-size: 0.875rem;
+    border: 1px solid;
+    animation: slideIn 0.2s ease;
+}
+
+.message-success {
+    background: var(--color-success-bg);
+    border-color: var(--color-success-border);
+    color: var(--color-success);
+}
+
+.message-error,
+.message-danger {
+    background: var(--color-danger-bg);
+    border-color: var(--color-danger-border);
+    color: var(--color-danger);
+}
+
+.message-warning {
+    background: var(--color-warning-bg);
+    border-color: var(--color-warning-border);
+    color: var(--color-warning);
+}
+
+.message-info {
+    background: var(--color-info-bg);
+    border-color: var(--color-info-border);
+    color: var(--color-info);
+}

@@ -774,7 +774,7 @@ class ExportStudentsExcelView(View):
         if 'education' in export_sections:
             headers.extend(['Предыд. образование', 'Учреждение (предыд.)', 'Документ об образ.', 'Серия/Номер док.',
                             'Дата выдачи док.', 'Текущее учреждение', 'Профессия', 'Курс', 'Форма обучения',
-                            'Срок обучения', 'Дата выпуска'])
+                            'Срок обучения', 'Дата выпуска', 'Целевое образование', 'Договор', 'Абилимпикс'])
 
         if 'employment' in export_sections:
             headers.extend(
@@ -831,6 +831,7 @@ class ExportStudentsExcelView(View):
             if 'education' in export_sections:
                 ee = getattr(student, 'education_ended', None)
                 ep = getattr(student, 'education_process', None)
+                et = getattr(student, 'education_target', None)
                 row_data.extend([
                     ee.get_education_type_display() if ee else '', ee.name if ee else '',
                     ee.get_education_document_display() if ee else '',
@@ -838,7 +839,8 @@ class ExportStudentsExcelView(View):
                     ep.education_institution.name if ep and ep.education_institution else '',
                     ep.profession if ep else '',
                     ep.course if ep else '', ep.get_form_display() if ep else '', ep.term if ep else '',
-                    ep.grad_date.strftime('%d.%m.%Y') if ep and ep.grad_date else ''
+                    ep.grad_date.strftime('%d.%m.%Y') if ep and ep.grad_date else '',
+                    et.name_organization if et else '', et.agreement if et else '', et.abilimpiks if et else ''
                 ])
 
             if 'employment' in export_sections:

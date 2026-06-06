@@ -1,0 +1,48 @@
+/* ==========================================================================
+   pagination.css — Постраничная навигация
+   ========================================================================== */
+
+.pagination-container {
+    margin-top: 24px;
+}
+
+.pagination {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    align-items: center;
+}
+
+.page-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    text-decoration: none;
+    padding: 0 10px;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: all var(--transition-fast);
+    border: 1px solid var(--color-border);
+}
+
+.page-link:hover {
+    background: var(--color-surface-muted);
+    color: var(--color-text-strong);
+    border-color: var(--color-border-strong);
+}
+
+.page-link.active {
+    background: var(--color-accent);
+    color: #ffffff;
+    border-color: var(--color-accent);
+}
+
+.page-link.active:hover {
+    background: var(--color-accent-hover);
+    color: #ffffff;
+}

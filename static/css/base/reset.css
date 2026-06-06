@@ -1,0 +1,35 @@
+/* ==========================================================================
+   reset.css — Сброс и базовые настройки body
+   ========================================================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.5;
+    font-size: 14px;
+    padding: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+hr {
+    border: 0;
+    height: 1px;
+    background: var(--color-border);
+    margin: 20px 0;
+}
+
+a {
+    color: var(--color-accent);
+}
+
+a:hover {
+    color: var(--color-accent-hover);
+}

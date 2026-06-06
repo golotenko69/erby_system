@@ -19,19 +19,28 @@ class InstitutionLastSeenMiddleware:
         response = self.get_response(request)
         return response
 
+
 class LoginRequiredMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        # Имя URL-схемы вашей страницы авторизации (проверьте, как она называется в urls.py)
+        # Имя URL-схемы вашей страницы авторизации
         login_url = reverse('login')
 
-        # Если пользователь НЕ авторизован И пытается зайти НЕ на страницу логина
-        if not request.user.is_authenticated and request.path != login_url:
-            # Исключаем также запросы к админке Django и статике/медиа, чтобы не сломать стили на форме логина
-            if not request.path.startswith('/admin/') and not request.path.startswith('/static/'):
-                return redirect(login_url)
+        # Если пользователь уже залогинен,middleware вообще ничего не должен блокировать
+        if request.user.is_authenticated:
+            return self.get_response(request)
 
-        response = self.get_response(request)
-        return response
+        # Список путей-исключений, которые НЕЛЬЗЯ перенаправлять на логин
+        # Добавляем сюда проверку на саму страницу логина, админку, статику и медиафайлы
+        if (
+            request.path == login_url
+            or request.path.startswith('/admin/')
+            or request.path.startswith('/static/')
+            or request.path.startswith('/media/')
+        ):
+            return self.get_response(request)
+
+        # Во всех остальных случаях неавторизованного пользователя отправляем на логин
+        return redirect(login_url)

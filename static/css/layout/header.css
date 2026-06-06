@@ -1,0 +1,82 @@
+/* ==========================================================================
+   header.css — Шапка приложения, логотип и навигация
+   ========================================================================== */
+
+.app-header {
+    padding: 12px 24px;
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.logo {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-strong);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.logo span {
+    color: var(--color-accent);
+    font-weight: 600;
+}
+
+/* --- Навигация --- */
+nav {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-wrap: wrap;
+}
+
+nav a {
+    text-decoration: none;
+    color: var(--color-text-muted);
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    font-size: 0.875rem;
+}
+
+nav a:hover {
+    background-color: var(--color-surface-muted);
+    color: var(--color-text-strong);
+}
+
+nav span {
+    color: var(--color-text-subtle);
+    font-weight: 500;
+    padding: 6px 10px;
+    font-size: 0.875rem;
+}
+
+nav form {
+    margin: 0;
+}
+
+/* Кнопка "Выйти" в навигации */
+nav button[type="submit"] {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-family: inherit;
+}
+
+nav button[type="submit"]:hover {
+    background-color: var(--color-danger-bg);
+    border-color: var(--color-danger-border);
+    color: var(--color-danger);
+}

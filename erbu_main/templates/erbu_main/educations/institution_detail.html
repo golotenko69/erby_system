@@ -5,9 +5,9 @@
 {% block content %}
     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
         <div>
-            <h1>🏛️ {{ institution.name }}</h1>
+            <h1> {{ institution.name }}</h1>
             <div class="student-detail-section" style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                <h3>👨‍💼 Ответственное лицо</h3>
+                <h3> Ответственное лицо</h3>
                 {% if responsible_teacher %}
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
                         <div>
@@ -36,7 +36,7 @@
     {# Профессии #}
     {% if professions %}
         <div class="student-detail-section">
-            <h3>📚 Профессии и специальности</h3>
+            <h3> Профессии и специальности</h3>
             <div style="display: flex; flex-wrap: wrap; gap: 10px;">
                 {% for profession in professions %}
                     <span style="background: #e0e7ff; color: #3730a3; padding: 8px 16px; border-radius: 20px; font-size: 0.9rem;">
@@ -49,7 +49,7 @@
 
     {# Студенты по курсам #}
     <div class="student-detail-section">
-        <h3>👨‍🎓 Студенты по курсам</h3>
+        <h3> Студенты по курсам</h3>
 
         {% for course, students in students_by_course.items %}
             {% if students %}

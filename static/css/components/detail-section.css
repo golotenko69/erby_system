@@ -1,0 +1,48 @@
+/* ==========================================================================
+   detail-section.css — Карточка-секция для страниц деталей
+   ========================================================================== */
+
+.student-detail-section {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 16px 20px;
+    margin-bottom: 12px;
+}
+
+.student-detail-section h3 {
+    color: var(--color-text-strong);
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.student-detail-section h4 {
+    color: var(--color-text-muted);
+    margin-top: 12px;
+    margin-bottom: 8px;
+}
+
+.student-detail-section p {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--color-border-muted);
+    font-size: 0.875rem;
+}
+
+.student-detail-section p:last-child {
+    border-bottom: none;
+}
+
+.student-detail-section p strong {
+    color: var(--color-text-muted);
+    font-weight: 500;
+    min-width: 180px;
+    display: inline-block;
+}
