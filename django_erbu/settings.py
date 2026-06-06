@@ -65,7 +65,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'erbu_main.middleware.LoginRequiredMiddleware',
     'erbu_main.middleware.InstitutionLastSeenMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = 'django_erbu.urls'
