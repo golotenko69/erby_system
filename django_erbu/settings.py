@@ -18,9 +18,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Инициализируем environ
 env = environ.Env(
-    # Указываем значения по умолчанию и типы данных
     DEBUG=(bool, False),
-    ALLOWED_HOSTS=(list, ['localhost', '127.0.0.1']),
+    ALLOWED_HOSTS=(list, []),
 )
 
 # Если рядом есть файл .env, читаем его (полезно для локальной разработки без Docker)
@@ -35,7 +34,7 @@ SECRET_KEY = env('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = env('ALLOWED_HOSTS')
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
 
 # Application definition
@@ -93,17 +92,15 @@ WSGI_APPLICATION = 'django_erbu.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'mssql',
-        'NAME': env('DB_NAME', default='StudentsRegionalBases'),
-        'USER': env('DB_USER', default='sa'),
-        'PASSWORD': env('DB_PASSWORD', default='Voteb1579k)'),
-        'HOST': env('DB_HOST', default='127.0.0.1'),
-        'PORT': env('DB_PORT', default='1433'),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('DB_NAME', default='postgres'),
+        'USER': env('DB_USER', default='postgres'),
+        'PASSWORD': env('DB_PASSWORD'),
+        'HOST': env('DB_HOST'),
+        'PORT': env('DB_PORT', default='6543'),
         'OPTIONS': {
-            'driver': 'ODBC Driver 18 for SQL Server',
-            'extra_params': 'TrustServerCertificate=yes;',
-            # TrustServerCertificate необходим, если у контейнера MSSQL нет SSL-сертификата
-        },
+                'sslmode': 'require',  # <-- Явно требуем безопасное SSL соединение
+            },
     }
 }
 
