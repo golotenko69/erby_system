@@ -48,12 +48,13 @@ name_validator = RegexValidator(
 
 
 class StudentForm(forms.ModelForm):
-    # Применяем валидаторы к текстовым полям
-    first_name = forms.CharField(label="Имя", validators=[name_validator])
-    middle_name = forms.CharField(label="Отчество", required=False, validators=[name_validator])
-    last_name = forms.CharField(label="Фамилия", required=False, validators=[name_validator])
-    phone = forms.CharField(label="Телефон", required=False, validators=[phone_validator])
-    inn = forms.CharField(label="ИНН", required=False, validators=[inn_validator])
+    # Явно указываем required=True для текстовых полей
+    first_name = forms.CharField(label="Имя", validators=[name_validator], required=True)
+    middle_name = forms.CharField(label="Отчество", validators=[name_validator], required=True)
+    last_name = forms.CharField(label="Фамилия", validators=[name_validator], required=True)
+    phone = forms.CharField(label="Телефон", validators=[phone_validator], required=True)
+    inn = forms.CharField(label="ИНН", validators=[inn_validator], required=True)
+    email = forms.EmailField(label="Email", required=True)
 
     class Meta:
         model = Student
@@ -65,26 +66,25 @@ class StudentForm(forms.ModelForm):
             'birthday': forms.DateInput(attrs={'type': 'date'}),
         }
 
-    # СНИЛС требует более сложной очистки от дефисов и пробелов
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Автоматически делаем все остальные поля (status, sex, birthday, snils) обязательными
+        for field_name in self.fields:
+            self.fields[field_name].required = True
+
     def clean_snils(self):
         snils_raw = self.cleaned_data.get('snils')
         if not snils_raw:
-            return snils_raw
-
-        # Очищаем строку от возможных дефисов и пробелов, оставленных пользователем
+            raise ValidationError("СНИЛС является обязательным полем.")
         snils_clean = ''.join(filter(str.isdigit, snils_raw))
-
         if len(snils_clean) != 11:
             raise ValidationError("СНИЛС должен содержать ровно 11 цифр.")
-
-        # Форматируем к стандартному виду: 123-456-789 01
         return f"{snils_clean[:3]}-{snils_clean[3:6]}-{snils_clean[6:9]} {snils_clean[9:]}"
 
-
 class PassportForm(forms.ModelForm):
-    series = forms.CharField(label="Серия", required=False, validators=[passport_series_validator])
-    number = forms.CharField(label="Номер", required=False, validators=[passport_number_validator])
-    department_code = forms.CharField(label="Код подразделения", required=False, validators=[department_code_validator])
+    series = forms.CharField(label="Серия", validators=[passport_series_validator], required=True)
+    number = forms.CharField(label="Номер", validators=[passport_number_validator], required=True)
+    department_code = forms.CharField(label="Код подразделения", validators=[department_code_validator], required=True)
 
     class Meta:
         model = Passport
@@ -96,22 +96,18 @@ class PassportForm(forms.ModelForm):
             'date_issued': forms.DateInput(attrs={'type': 'date'}),
         }
 
-    def clean(self):
-        cleaned_data = super().clean()
-        series = cleaned_data.get('series')
-        number = cleaned_data.get('number')
-
-        # Валидация: если заполнено одно из паспортных полей, требуем заполнить и второе
-        if (series and not number) or (number and not series):
-            raise ValidationError("Если вы заполняете паспортные данные, укажите и серию, и номер.")
-        return cleaned_data
-
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Делаем абсолютно все поля паспорта обязательными
+        for field in self.fields.values():
+            field.required = True
 
 class ParentForm(forms.ModelForm):
-    first_name = forms.CharField(label="Имя", required=False, validators=[name_validator])
-    middle_name = forms.CharField(label="Отчество", required=False, validators=[name_validator])
-    last_name = forms.CharField(label="Фамилия", required=False, validators=[name_validator])
-    phone = forms.CharField(label="Телефон", required=False, validators=[phone_validator])
+    first_name = forms.CharField(label="Имя", validators=[name_validator], required=True)
+    middle_name = forms.CharField(label="Отчество", validators=[name_validator], required=True)
+    last_name = forms.CharField(label="Фамилия", validators=[name_validator], required=True)
+    phone = forms.CharField(label="Телефон", validators=[phone_validator], required=True)
+    email = forms.EmailField(label="Email", required=True)
 
     class Meta:
         model = Parent
@@ -128,6 +124,18 @@ class EducationEndedForm(forms.ModelForm):
         widgets = {
             'date_issued': forms.DateInput(attrs={'type': 'date'}),
         }
+        labels = {
+            'education_type': 'Уровень образования',  # Заменили название лейбла
+            'name': 'Название учреждения',
+            'education_document': 'Документ',
+            'series': 'Серия/Номер',
+            'date_issued': 'Дата выдачи',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.required = True
 
 
 class EducationProcessForm(forms.ModelForm):
@@ -140,11 +148,16 @@ class EducationProcessForm(forms.ModelForm):
         labels = {
             'education_institution': 'Название учреждения',
         }
-
+        widgets = {
+            'grad_date': forms.DateInput(attrs={'type': 'date'}),
+        }
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+
+        for field in self.fields.values():
+            field.required = True
 
         if self.user and getattr(self.user, 'role', None) == 'TEACHER':
             institution = getattr(self.user, 'education_institution', None)
@@ -155,7 +168,6 @@ class EducationProcessForm(forms.ModelForm):
             else:
                 self.fields['education_institution'].queryset = EducationInstitution.objects.none()
                 self.fields['education_institution'].widget.attrs['disabled'] = True
-
 
 # Оставляем остальные формы без изменений, так как они работают в связке
 class DisabilityForm(forms.ModelForm):
@@ -187,17 +199,58 @@ class EducationTargetForm(forms.ModelForm):
         model = EducationTarget
         fields = ['agreement', 'name_organization', 'abilimpiks']
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.required = True
+
 
 class EmploymentForm(forms.ModelForm):
     class Meta:
         model = Employment
         fields = [
-            'employment_status', 'place_job', 'position',
-            'hiring_date', 'reason_not_employment',
-            'accounting_employment', 'resume_status'
+            'employment_status', 'place_job', 'position', 'hiring_date',
+            'reason_not_employment', 'accounting_employment', 'resume_status',
+            'further_education_level', 'further_institution_name', 'further_grad_year'
         ]
-        widgets = {'hiring_date': forms.DateInput(attrs={'type': 'date'})}
+        widgets = {
+            'hiring_date': forms.DateInput(attrs={'type': 'date'}),
+        }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Поля общего статуса всегда обязательны
+        self.fields['employment_status'].required = True
+        self.fields['accounting_employment'].required = True
+        self.fields['resume_status'].required = True
+
+    def clean(self):
+        cleaned_data = super().clean()
+        status = cleaned_data.get('employment_status')
+        reason = cleaned_data.get('reason_not_employment')
+
+        # Условная валидация в зависимости от выбора "Трудоустроен"
+        if status == 'Да':
+            if not cleaned_data.get('place_job'):
+                self.add_error('place_job', 'При трудоустройстве это поле обязательно.')
+            if not cleaned_data.get('position'):
+                self.add_error('position', 'При трудоустройстве это поле обязательно.')
+            if not cleaned_data.get('hiring_date'):
+                self.add_error('hiring_date', 'При трудоустройстве это поле обязательно.')
+        elif status == 'Нет':
+            if not reason:
+                self.add_error('reason_not_employment', 'Укажите причину нетрудоустройства.')
+
+            # Если причина — продолжение обучения, требуем дополнительные окошки
+            if reason == 'обучение':
+                if not cleaned_data.get('further_education_level'):
+                    self.add_error('further_education_level', 'Укажите уровень дальнейшего образования.')
+                if not cleaned_data.get('further_institution_name'):
+                    self.add_error('further_institution_name', 'Укажите наименование учреждения.')
+                if not cleaned_data.get('further_grad_year'):
+                    self.add_error('further_grad_year', 'Укажите год выпуска.')
+
+        return cleaned_data
 
 class EducationInstitutionForm(forms.ModelForm):
     teacher_last_name = forms.CharField(label='Фамилия ответственного', max_length=150, required=False,

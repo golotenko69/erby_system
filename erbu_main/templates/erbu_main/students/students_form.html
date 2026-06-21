@@ -78,6 +78,69 @@
 
 <!-- ================= JS ================= -->
 <script>
+    document.addEventListener("DOMContentLoaded", function () {
+    // Селекторы полей блока трудоустройства
+    const empStatusField = document.getElementById("id_employment_status");
+    const reasonField = document.getElementById("id_reason_not_employment");
+
+    // Поля работы
+    const jobFields = [
+        document.getElementById("id_place_job"),
+        document.getElementById("id_position"),
+        document.getElementById("id_hiring_date")
+    ];
+
+    // Дополнительные окошки для продолжения обучения
+    const furtherEduFields = [
+        document.getElementById("id_further_education_level"),
+        document.getElementById("id_further_institution_name"),
+        document.getElementById("id_further_grad_year")
+    ];
+
+    // Вспомогательная функция для переключения видимости (работает с тегом <p> от Django .as_p)
+    function toggleRow(field, show) {
+        if (field) {
+            const row = field.closest("p");
+            if (row) row.style.display = show ? "block" : "none";
+        }
+    }
+
+    function managementLogic() {
+        const status = empStatusField ? empStatusField.value : "";
+        const reason = reasonField ? reasonField.value : "";
+
+        if (status === "Да") {
+            // Показываем работу, скрываем причины и дальнейшую учебу
+            jobFields.forEach(f => toggleRow(f, true));
+            toggleRow(reasonField, false);
+            furtherEduFields.forEach(f => toggleRow(f, false));
+        } else if (status === "Нет") {
+            // Скрываем работу, показываем причину
+            jobFields.forEach(f => toggleRow(f, false));
+            toggleRow(reasonField, true);
+
+            // Если причина "Продолжил обучение" (значение 'обучение' из моделей)
+            if (reason === "обучение") {
+                furtherEduFields.forEach(f => toggleRow(f, true));
+            } else {
+                furtherEduFields.forEach(f => toggleRow(f, false));
+            }
+        } else {
+            // Если ничего не выбрано — скрываем всё вариативное
+            jobFields.forEach(f => toggleRow(f, false));
+            toggleRow(reasonField, false);
+            furtherEduFields.forEach(f => toggleRow(f, false));
+        }
+    }
+
+    // Навешиваем обработчики событий
+    if (empStatusField) empStatusField.addEventListener("change", managementLogic);
+    if (reasonField) reasonField.addEventListener("change", managementLogic);
+
+    // Запускаем один раз при загрузке страницы для правильного отображения старых данных
+    managementLogic();
+});
+
 function addForm(prefix) {
     const totalInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
     const currentCount = parseInt(totalInput.value);
