@@ -23,7 +23,7 @@ class Student(models.Model):
     email = models.EmailField("Email", max_length=100, blank=True, null=True)
     phone = models.CharField("Телефон", max_length=100, blank=True, null=True)
     birthday = models.DateField("Дата рождения")
-    snils = models.CharField("СНИЛС", max_length=11, blank=True, null=True)
+    snils = models.CharField("СНИЛС", max_length=14, blank=True, null=True)
     inn = models.CharField("ИНН", max_length=12, blank=True, null=True)
 
 
