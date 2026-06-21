@@ -271,7 +271,23 @@ class Employment(models.Model):
     place_job = models.CharField("Место работы", max_length=150, blank=True, null=True)
     position = models.CharField("Должность", max_length=100, blank=True, null=True)
     hiring_date = models.DateField("Дата приема", blank=True, null=True)
-
+    further_education_level = models.CharField(
+        "Уровень дальнейшего образования",
+        max_length=150,
+        blank=True,
+        null=True
+    )
+    further_institution_name = models.CharField(
+        "Название учебного заведения (дальнейшее)",
+        max_length=255,
+        blank=True,
+        null=True
+    )
+    further_grad_year = models.IntegerField(
+        "Год окончания дальнейшего обучения",
+        blank=True,
+        null=True
+    )
     # Изменено: добавлен выпадающий список choices
     reason_not_employment = models.CharField(
         "Причина нетрудоустройства",
