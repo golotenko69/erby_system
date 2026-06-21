@@ -1,18 +1,7 @@
 version: '3.8'
 
 services:
-  # 1. Сервис Базы Данных MSSQL
-  db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: django_mssql_db
-    environment:
-      - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=${DB_PASSWORD} # Задайте сложный пароль
-    ports:
-      - "1433:1433" # Открываем порт наружу, чтобы вы могли подключиться через SQL Management Studio
-    volumes:
-      - mssql_data:/var/opt/mssql
-#Сервис Django
+  # 1. Сервис Django
   web:
     build: .
     container_name: django_web_app
@@ -25,15 +14,14 @@ services:
       - media_volume:/app/media
     env_file:
       - .env
-    extra_hosts:
-      - "host.docker.internal:host-gateway" # <-- Разрешаем этот адрес внутри Linux
+    depends_on: [] # Больше не зависит от локальной db
 
-  # 3. Сервис Веб-сервера Nginx
+  # 2. Сервис Веб-сервера Nginx
   nginx:
     image: nginx:latest
     container_name: django_nginx
     ports:
-      - "80:80" # Пробрасываем стандартный веб-порт на ваш компьютер/сервер
+      - "80:80"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - static_volume:/app/static
@@ -42,6 +30,5 @@ services:
       - web
 
 volumes:
-  mssql_data:    # Сохраняет данные БД на вашем жестком диске, чтобы они не удалялись при перезапуске
   static_volume: # Общая папка для статики между Django и Nginx
-  media_volume:  # Общая папка для медиа-файлов
+  media_volume:  # Общая папка для медиа-файловs
