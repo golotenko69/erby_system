@@ -140,9 +140,7 @@ class EducationProcessForm(forms.ModelForm):
         labels = {
             'education_institution': 'Название учреждения',
         }
-        widgets = {
-            'grad_date': forms.DateInput(attrs={'type': 'date'}),
-        }
+
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)

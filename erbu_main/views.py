@@ -817,8 +817,9 @@ class ExportStudentsExcelView(View):
                 mse = getattr(d, 'mse', None) if d else None
                 pmpk = getattr(d, 'pmpk', None) if d else None
                 row_data.extend([
-                    d.get_status_ovz_display() if d else '', d.disability_group if d else '',
-                    d.nosology_type if d else '',
+                    d.get_status_ovz_display() if d else '',
+                    d.get_disability_group_display() if d else '',  # ИЗМЕНЕНО
+                    d.get_nosology_type_display() if d else '',  # ИЗМЕНЕНО
                     d.year_removal.strftime('%d.%m.%Y') if d and d.year_removal else '',
                     mse.series if mse else '', mse.number if mse else '',
                     mse.date_issued.strftime('%d.%m.%Y') if mse and mse.date_issued else '',
@@ -846,11 +847,13 @@ class ExportStudentsExcelView(View):
             if 'employment' in export_sections:
                 em = getattr(student, 'employment', None)
                 row_data.extend([
-                    em.get_employment_status_display() if em else '', em.place_job if em else '',
+                    em.get_employment_status_display() if em else '',
+                    em.place_job if em else '',
                     em.position if em else '',
                     em.hiring_date.strftime('%d.%m.%Y') if em and em.hiring_date else '',
-                    em.reason_not_employment if em else '',
-                    em.get_accounting_employment_display() if em else '', em.get_resume_status_display() if em else ''
+                    em.get_reason_not_employment_display() if em else '',  # ИЗМЕНЕНО
+                    em.get_accounting_employment_display() if em else '',
+                    em.get_resume_status_display() if em else ''
                 ])
 
             if 'parents' in export_sections:

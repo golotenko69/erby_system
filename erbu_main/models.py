@@ -147,7 +147,7 @@ class EducationProcess(models.Model):
     )
 
     grad_date = models.DateField(
-        "Дата выпуска",
+        "Год выпуска",
         blank=True,
         null=True
     )
@@ -160,13 +160,44 @@ class Parent(models.Model):
     email = models.EmailField("Email", max_length=100, blank=True, null=True)
 
 
-
 class DisabilityInfo(models.Model):
-    # OneToOne: Актуальная информация об инвалидности
+    DISABILITY_GROUP_CHOICES = [
+        ('1', '1'),
+        ('2', '2'),
+        ('3', '3'),
+        ('ребенок-инвалид', 'Ребенок-инвалид'),
+    ]
+
+    NOSOLOGY_CHOICES = [
+        ('интеллектуальные_опр_зпр_уо', 'Интеллектуальные нарушения (ОПР, ЗПР, УО)'),
+        ('интеллектуальные_рас', 'Интеллектуальные нарушения (расстройство аутистического спектра)'),
+        ('ода_мобильные', 'Нарушения ОДА (мобильные)'),
+        ('ода_коляска', 'Нарушения ОДА (на кресле-коляске)'),
+        ('зрение', 'Нарушение зрения'),
+        ('слух', 'Нарушение слуха'),
+        ('соматические', 'Соматические заболевания'),
+        ('речь', 'Нарушение речи'),
+    ]
+
     student = models.OneToOneField(Student, on_delete=models.CASCADE, primary_key=True, related_name='disability_info')
     status_ovz = models.CharField("Статус ОВЗ", max_length=3, choices=[('Да', 'Да'), ('Нет', 'Нет')])
-    disability_group = models.CharField("Группа инвалидности", max_length=50, blank=True, null=True)
-    nosology_type = models.CharField("Нозология", max_length=100, blank=True, null=True)
+
+    # Изменено: добавлен выпадающий список choices
+    disability_group = models.CharField(
+        "Группа инвалидности",
+        max_length=50,
+        choices=DISABILITY_GROUP_CHOICES,
+        blank=True,
+        null=True
+    )
+    # Изменено: добавлен выпадающий список choices
+    nosology_type = models.CharField(
+        "Нозология",
+        max_length=150,
+        choices=NOSOLOGY_CHOICES,
+        blank=True,
+        null=True
+    )
     year_removal = models.DateField("Дата снятия", blank=True, null=True)
 
 class Mse(models.Model):
@@ -217,57 +248,41 @@ class EducationTarget(models.Model):
         choices=[('Да', 'Да'), ('Нет', 'Нет')]
     )
 
+
 class Employment(models.Model):
+    REASON_NOT_EMPLOYED_CHOICES = [
+        ('служба_в_вс', 'Служба в вооруженных силах'),
+        ('декрет_уход', 'Декретный отпуск или отпуск по уходу за ребенком'),
+        ('обучение', 'Продолжил обучение'),
+        ('здоровье', 'По состоянию здоровья'),
+        ('иные', 'Иные причины'),
+    ]
+
     student = models.OneToOneField(
         Student,
         on_delete=models.CASCADE,
         related_name='employment'
     )
-
     employment_status = models.CharField(
         "Трудоустроен",
         max_length=3,
         choices=[('Да', 'Да'), ('Нет', 'Нет')]
     )
+    place_job = models.CharField("Место работы", max_length=150, blank=True, null=True)
+    position = models.CharField("Должность", max_length=100, blank=True, null=True)
+    hiring_date = models.DateField("Дата приема", blank=True, null=True)
 
-    place_job = models.CharField(
-        "Место работы",
-        max_length=150,
-        blank=True,
-        null=True
-    )
-
-    position = models.CharField(
-        "Должность",
-        max_length=100,
-        blank=True,
-        null=True
-    )
-
-    hiring_date = models.DateField(
-        "Дата приема",
-        blank=True,
-        null=True
-    )
-
+    # Изменено: добавлен выпадающий список choices
     reason_not_employment = models.CharField(
         "Причина нетрудоустройства",
         max_length=200,
+        choices=REASON_NOT_EMPLOYED_CHOICES,
         blank=True,
         null=True
     )
 
-    accounting_employment = models.CharField(
-        "Состоит в ЦЗН",
-        max_length=3,
-        choices=[('Да', 'Да'), ('Нет', 'Нет')]
-    )
-
-    resume_status = models.CharField(
-        "Резюме создано",
-        max_length=3,
-        choices=[('Да', 'Да'), ('Нет', 'Нет')]
-    )
+    accounting_employment = models.CharField("Состоит в ЦЗН", max_length=3, choices=[('Да', 'Да'), ('Нет', 'Нет')])
+    resume_status = models.CharField("Резюме создано", max_length=3, choices=[('Да', 'Да'), ('Нет', 'Нет')])
 
 class ResponsiblePerson(models.Model):
     first_name = models.CharField("Имя", max_length=100)
