@@ -3,12 +3,10 @@ LABEL authors="Андрей"
 
 ENV PYTHONUNBUFFERED=1
 
-# Устанавливаем системные зависимости и драйвер Microsoft ODBC для MSSQL (современный метод)
-RUN apt-get update && apt-get install -y gnupg2 curl apt-transport-https unixodbc-dev g++ \
-    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
-    && curl -fsSL https://packages.microsoft.com/config/debian/12/prod.list > /etc/apt/sources.list.d/mssql-release.list \
-    && apt-get update \
-    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+# Устанавливаем минимальные системные зависимости для сборки некоторых Python-пакетов (если применимо)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -20,11 +18,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Копируем весь код проекта в контейнер
+# Копируем весь код проекта в контейнер (в одну строку, без разрывов)
 COPY . .
 
-
-# Открываем порт 8000 (на нем будет слушать Gunicorn)
+# Открываем порт 8000
 EXPOSE 8000
 
 CMD ["gunicorn", "django_erbu.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
