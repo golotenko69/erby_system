@@ -79,55 +79,25 @@ class StudentCreateView(TeacherRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
 
         if self.request.POST:
-            context['passport_form'] = PassportForm(
-                self.request.POST or None
-            )
-
-            context['disability_form'] = DisabilityForm(
-                self.request.POST or None
-            )
-
-            context['mse_form'] = MseForm(
-                self.request.POST or None
-            )
-
-            context['pmpk_form'] = PmpkForm(
-                self.request.POST or None
-            )
-
-            # formset только для родителей
-            context['parent_formset'] = ParentFormSet(
-                self.request.POST or None
-            )
-
-            # обычные формы
-            context['edu_end_form'] = EducationEndedForm(
-                self.request.POST or None
-            )
-
-            context['edu_proc_form'] = EducationProcessForm(
-                self.request.POST or None,
-                user=self.request.user
-            )
-
-            context['edu_tar_form'] = EducationTargetForm(
-                self.request.POST or None
-            )
-
-            context['employment_form'] = EmploymentForm(
-                self.request.POST or None
-            )
+            context['passport_form'] = PassportForm(self.request.POST, prefix='passport')
+            context['disability_form'] = DisabilityForm(self.request.POST, prefix='disability')
+            context['mse_form'] = MseForm(self.request.POST, prefix='mse')
+            context['pmpk_form'] = PmpkForm(self.request.POST, prefix='pmpk')
+            context['parent_formset'] = ParentFormSet(self.request.POST, prefix='parent')
+            context['edu_end_form'] = EducationEndedForm(self.request.POST, prefix='edu_end')
+            context['edu_proc_form'] = EducationProcessForm(self.request.POST, user=self.request.user, prefix='edu_proc')
+            context['edu_tar_form'] = EducationTargetForm(self.request.POST, prefix='edu_tar')
+            context['employment_form'] = EmploymentForm(self.request.POST, prefix='employment')
         else:
-            context['passport_form'] = PassportForm()
-            context['disability_form'] = DisabilityForm()
-            context['mse_form'] = MseForm()
-            context['pmpk_form'] = PmpkForm()
-
-            context['parent_formset'] = ParentFormSet()
-            context['edu_end_form'] = EducationEndedForm()
-            context['edu_proc_form'] = EducationProcessForm(user=self.request.user)
-            context['edu_tar_form'] = EducationTargetForm()
-            context['employment_form'] = EmploymentForm()
+            context['passport_form'] = PassportForm(prefix='passport')
+            context['disability_form'] = DisabilityForm(prefix='disability')
+            context['mse_form'] = MseForm(prefix='mse')
+            context['pmpk_form'] = PmpkForm(prefix='pmpk')
+            context['parent_formset'] = ParentFormSet(prefix='parent')
+            context['edu_end_form'] = EducationEndedForm(prefix='edu_end')
+            context['edu_proc_form'] = EducationProcessForm(user=self.request.user, prefix='edu_proc')
+            context['edu_tar_form'] = EducationTargetForm(prefix='edu_tar')
+            context['employment_form'] = EmploymentForm(prefix='employment')
 
         return context
 
@@ -138,32 +108,23 @@ class StudentCreateView(TeacherRequiredMixin, CreateView):
         disability_form = context['disability_form']
         mse_form = context['mse_form']
         pmpk_form = context['pmpk_form']
-
         parent_formset = context['parent_formset']
         edu_end_form = context['edu_end_form']
         edu_proc_form = context['edu_proc_form']
         edu_tar_form = context['edu_tar_form']
         employment_form = context['employment_form']
 
-        # Проверяем валидность всех форм
         forms_valid = (
-                form.is_valid() and
-                passport_form.is_valid() and
-                disability_form.is_valid() and
-                mse_form.is_valid() and
-                pmpk_form.is_valid() and
-                parent_formset.is_valid() and
-                edu_end_form.is_valid() and
-                edu_proc_form.is_valid() and
-                edu_tar_form.is_valid() and
-                employment_form.is_valid()
+                form.is_valid() and passport_form.is_valid() and
+                disability_form.is_valid() and mse_form.is_valid() and
+                pmpk_form.is_valid() and parent_formset.is_valid() and
+                edu_end_form.is_valid() and edu_proc_form.is_valid() and
+                edu_tar_form.is_valid() and employment_form.is_valid()
         )
 
         if forms_valid:
-            # Сохраняем студента
             student = form.save()
 
-            # Сохраняем OneToOne поля
             passport = passport_form.save(commit=False)
             passport.student = student
             passport.save()
@@ -172,13 +133,17 @@ class StudentCreateView(TeacherRequiredMixin, CreateView):
             disability.student = student
             disability.save()
 
-            mse = mse_form.save(commit=False)
-            mse.disability = disability
-            mse.save()
+            # Сохраняем МСЭ только если указана Инвалидность
+            if disability_form.cleaned_data.get('has_disability') == 'Да':
+                mse = mse_form.save(commit=False)
+                mse.disability = disability
+                mse.save()
 
-            pmpk = pmpk_form.save(commit=False)
-            pmpk.disability = disability
-            pmpk.save()
+            # Сохраняем ПМПК только если указан статус ОВЗ = Да
+            if disability_form.cleaned_data.get('status_ovz') == 'Да':
+                pmpk = pmpk_form.save(commit=False)
+                pmpk.disability = disability
+                pmpk.save()
 
             education_ended = edu_end_form.save(commit=False)
             education_ended.student = student
@@ -188,10 +153,7 @@ class StudentCreateView(TeacherRequiredMixin, CreateView):
             education_process.student = student
 
             if self.request.user.role == 'TEACHER':
-                education_process.education_institution = (
-                    self.request.user.education_institution
-                )
-
+                education_process.education_institution = self.request.user.education_institution
             education_process.save()
 
             education_target = edu_tar_form.save(commit=False)
@@ -202,11 +164,9 @@ class StudentCreateView(TeacherRequiredMixin, CreateView):
             employment.student = student
             employment.save()
 
-            # Сохраняем formsets
             parent_formset.instance = student
             parent_formset.save()
 
-            # ЛОГИРОВАНИЕ ДОБАВЛЕНИЯ
             user_institution = getattr(self.request.user, 'education_institution', None)
             StudentLog.objects.create(
                 action='CREATE',
@@ -215,10 +175,7 @@ class StudentCreateView(TeacherRequiredMixin, CreateView):
                 institution_name=user_institution.name if user_institution else "Администрация"
             )
 
-            messages.success(
-                self.request,
-                f"Студент '{student.first_name} {student.last_name}' успешно создан!"
-            )
+            messages.success(self.request, f"Студент '{student.first_name} {student.last_name}' успешно создан!")
             return redirect('student_detail', student_id=student.pk)
 
         return self.render_to_response(self.get_context_data(form=form))
@@ -529,89 +486,56 @@ class StudentFullEditView(UpdateView):
 
     def get_object(self, queryset=None):
         obj = super().get_object(queryset)
-
-        # Проверка доступа для учителя
         if self.request.user.role == 'TEACHER':
-            # ИСПРАВЛЕНО: Проверяем через связанный объект education_process
             student_institution = None
             if hasattr(obj, 'education_process') and obj.education_process:
                 student_institution = obj.education_process.education_institution
 
             if student_institution != self.request.user.education_institution:
                 raise HttpResponseForbidden("Нет доступа")
-
         return obj
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         student = self.object if self.object.pk else None
 
+        disability = getattr(student, 'disability_info', None)
+        mse_instance = disability.mse if disability and hasattr(disability, 'mse') else None
+        pmpk_instance = disability.pmpk if disability and hasattr(disability, 'pmpk') else None
+
         if self.request.POST:
-            context['passport_form'] = PassportForm(
-                self.request.POST,
-                instance=getattr(student, 'passport', None)
-            )
-            context['disability_form'] = DisabilityForm(
-                self.request.POST,
-                instance=getattr(student, 'disability_info', None)
-            )
-
-            # Для Mse и Pmpk нужно проверить существование disability
-            disability = getattr(student, 'disability_info', None)
-            mse_instance = disability.mse if disability and hasattr(disability, 'mse') else None
-            pmpk_instance = disability.pmpk if disability and hasattr(disability, 'pmpk') else None
-
-            context['mse_form'] = MseForm(self.request.POST, instance=mse_instance)
-            context['pmpk_form'] = PmpkForm(self.request.POST, instance=pmpk_instance)
-
-            context['parent_formset'] = ParentFormSet(self.request.POST, instance=student)
-            context['edu_end_form'] = EducationEndedForm(
-                self.request.POST,
-                instance=getattr(student, 'education_ended', None)
-            )
-
-            context['edu_proc_form'] = EducationProcessForm(
-                self.request.POST,
-                instance=getattr(student, 'education_process', None),
-                user=self.request.user
-            )
-
-            context['edu_tar_form'] = EducationTargetForm(
-                self.request.POST,
-                instance=getattr(student, 'education_target', None)
-            )
-
-            context['employment_form'] = EmploymentForm(
-                self.request.POST,
-                instance=getattr(student, 'employment', None)
-            )
+            context['passport_form'] = PassportForm(self.request.POST, instance=getattr(student, 'passport', None),
+                                                    prefix='passport')
+            context['disability_form'] = DisabilityForm(self.request.POST, instance=disability, prefix='disability')
+            context['mse_form'] = MseForm(self.request.POST, instance=mse_instance, prefix='mse')
+            context['pmpk_form'] = PmpkForm(self.request.POST, instance=pmpk_instance, prefix='pmpk')
+            context['parent_formset'] = ParentFormSet(self.request.POST, instance=student, prefix='parent')
+            context['edu_end_form'] = EducationEndedForm(self.request.POST,
+                                                         instance=getattr(student, 'education_ended', None),
+                                                         prefix='edu_end')
+            context['edu_proc_form'] = EducationProcessForm(self.request.POST,
+                                                            instance=getattr(student, 'education_process', None),
+                                                            user=self.request.user, prefix='edu_proc')
+            context['edu_tar_form'] = EducationTargetForm(self.request.POST,
+                                                          instance=getattr(student, 'education_target', None),
+                                                          prefix='edu_tar')
+            context['employment_form'] = EmploymentForm(self.request.POST,
+                                                        instance=getattr(student, 'employment', None),
+                                                        prefix='employment')
         else:
-            # GET запрос - загружаем существующие данные
-            disability = getattr(student, 'disability_info', None)
-            mse_instance = disability.mse if disability and hasattr(disability, 'mse') else None
-            pmpk_instance = disability.pmpk if disability and hasattr(disability, 'pmpk') else None
-
-            context['passport_form'] = PassportForm(instance=getattr(student, 'passport', None))
-            context['disability_form'] = DisabilityForm(instance=disability)
-            context['mse_form'] = MseForm(instance=mse_instance)
-            context['pmpk_form'] = PmpkForm(instance=pmpk_instance)
-
-            context['parent_formset'] = ParentFormSet(instance=student)
-
-            # --- ИСПРАВЛЕНО ТУТ: Передаем правильные связанные инстансы вместо student ---
-            context['edu_end_form'] = EducationEndedForm(
-                instance=getattr(student, 'education_ended', None)
-            )
-            context['edu_proc_form'] = EducationProcessForm(
-                instance=getattr(student, 'education_process', None),
-                user=self.request.user
-            )
-            context['edu_tar_form'] = EducationTargetForm(
-                instance=getattr(student, 'education_target', None)
-            )
-            context['employment_form'] = EmploymentForm(
-                instance=getattr(student, 'employment', None)
-            )
+            context['passport_form'] = PassportForm(instance=getattr(student, 'passport', None), prefix='passport')
+            context['disability_form'] = DisabilityForm(instance=disability, prefix='disability')
+            context['mse_form'] = MseForm(instance=mse_instance, prefix='mse')
+            context['pmpk_form'] = PmpkForm(instance=pmpk_instance, prefix='pmpk')
+            context['parent_formset'] = ParentFormSet(instance=student, prefix='parent')
+            context['edu_end_form'] = EducationEndedForm(instance=getattr(student, 'education_ended', None),
+                                                         prefix='edu_end')
+            context['edu_proc_form'] = EducationProcessForm(instance=getattr(student, 'education_process', None),
+                                                            user=self.request.user, prefix='edu_proc')
+            context['edu_tar_form'] = EducationTargetForm(instance=getattr(student, 'education_target', None),
+                                                          prefix='edu_tar')
+            context['employment_form'] = EmploymentForm(instance=getattr(student, 'employment', None),
+                                                        prefix='employment')
 
         return context
 
@@ -637,11 +561,9 @@ class StudentFullEditView(UpdateView):
         )
 
         if forms_valid:
-            # Получаем текущее состояние студента из базы ДО сохранения формы
             old_student = Student.objects.get(pk=self.object.pk)
             changes_list = []
 
-            # Словарь человекочитаемых названий полей
             field_labels = {
                 'status': 'Статус', 'phone': 'Телефон', 'email': 'Email',
                 'education_type': 'Тип оконч. образования', 'education_document': 'Документ оконч. образования',
@@ -650,7 +572,6 @@ class StudentFullEditView(UpdateView):
                 'resume_status': 'Резюме создано'
             }
 
-            # Функция для сравнения полей формы и старой модели
             def check_changes(form_obj, old_obj, fields):
                 for field in fields:
                     if field in form_obj.cleaned_data:
@@ -666,7 +587,6 @@ class StudentFullEditView(UpdateView):
                             label = field_labels.get(field, field)
                             changes_list.append(f"• {label}: «{old_val or 'нет'}» ➔ «{new_val or 'нет'}»")
 
-            # Проверяем изменения по разным формам
             check_changes(form, old_student, ['status', 'phone', 'email'])
 
             if hasattr(old_student, 'education_ended'):
@@ -677,22 +597,39 @@ class StudentFullEditView(UpdateView):
                 check_changes(employment_form, old_student.employment,
                               ['employment_status', 'accounting_employment', 'resume_status'])
 
-            # Сохраняем данные
             student = form.save()
             passport_form.save()
-            disability_form.save()
-            mse_form.save()
-            pmpk_form.save()
+
+            disability = disability_form.save(commit=False)
+            disability.student = student
+            disability.save()
+
+            # Обновление или удаление МСЭ
+            if disability_form.cleaned_data.get('has_disability') == 'Да':
+                mse = mse_form.save(commit=False)
+                mse.disability = disability
+                mse.save()
+            else:
+                if hasattr(disability, 'mse'):
+                    disability.mse.delete()
+
+            # Обновление или удаление ПМПК
+            if disability_form.cleaned_data.get('status_ovz') == 'Да':
+                pmpk = pmpk_form.save(commit=False)
+                pmpk.disability = disability
+                pmpk.save()
+            else:
+                if hasattr(disability, 'pmpk'):
+                    disability.pmpk.delete()
+
             edu_end_form.save()
             edu_proc_form.save()
             edu_tar_form.save()
             employment_form.save()
             parent_formset.save()
 
-            # Собираем итоговую строку изменений
             changes_text = "\n".join(changes_list) if changes_list else "Существенных изменений в ключевых полях нет."
 
-            # ЛОГИРОВАНИЕ С ДЕТАЛИЗАЦИЕЙ
             user_institution = getattr(self.request.user, 'education_institution', None)
             StudentLog.objects.create(
                 action='UPDATE',
@@ -706,7 +643,6 @@ class StudentFullEditView(UpdateView):
             return redirect('student_detail', student_id=student.pk)
 
         return self.render_to_response(self.get_context_data(form=form))
-
 
 class ExportStudentsExcelView(View):
     def post(self, request, *args, **kwargs):

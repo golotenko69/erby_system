@@ -169,13 +169,47 @@ class EducationProcessForm(forms.ModelForm):
                 self.fields['education_institution'].queryset = EducationInstitution.objects.none()
                 self.fields['education_institution'].widget.attrs['disabled'] = True
 
-# Оставляем остальные формы без изменений, так как они работают в связке
+
 class DisabilityForm(forms.ModelForm):
+    has_disability = forms.ChoiceField(
+        label="Инвалидность",
+        choices=[('', '---------'), ('Да', 'Да'), ('Нет', 'Нет')],
+        required=True
+    )
+
     class Meta:
         model = DisabilityInfo
-        fields = ['status_ovz', 'disability_group', 'nosology_type', 'year_removal']
+        # Располагаем поля в логичном порядке
+        fields = ['has_disability', 'disability_group', 'nosology_type', 'year_removal', 'status_ovz']
         widgets = {'year_removal': forms.DateInput(attrs={'type': 'date'})}
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Если редактируем и группа указана, ставим "Да" автоматически
+        if self.instance and self.instance.pk and self.instance.disability_group:
+            self.fields['has_disability'].initial = 'Да'
+        elif self.instance and self.instance.pk:
+            self.fields['has_disability'].initial = 'Нет'
+
+        self.fields['status_ovz'].required = True
+
+    def clean(self):
+        cleaned_data = super().clean()
+        has_disab = cleaned_data.get('has_disability')
+
+        # Если инвалидность ЕСТЬ, требуем группу и нозологию
+        if has_disab == 'Да':
+            if not cleaned_data.get('disability_group'):
+                self.add_error('disability_group', 'Укажите группу инвалидности')
+            if not cleaned_data.get('nosology_type'):
+                self.add_error('nosology_type', 'Укажите нозологию')
+        else:
+            # Если инвалидности НЕТ, очищаем поля (чтобы мусор не летел в БД)
+            cleaned_data['disability_group'] = None
+            cleaned_data['nosology_type'] = None
+            cleaned_data['year_removal'] = None
+
+        return cleaned_data
 
 class MseForm(forms.ModelForm):
     class Meta:
@@ -186,6 +220,16 @@ class MseForm(forms.ModelForm):
             'date_next_examination': forms.DateInput(attrs={'type': 'date'}),
         }
 
+    def clean(self):
+        cleaned_data = super().clean()
+        # Проверяем, была ли выбрана инвалидность в родительской форме
+        has_disab = self.data.get('disability-has_disability')
+        if has_disab == 'Да':
+            for field in self.Meta.fields:
+                if not cleaned_data.get(field):
+                    self.add_error(field, 'Это поле обязательно при наличии инвалидности')
+        return cleaned_data
+
 
 class PmpkForm(forms.ModelForm):
     class Meta:
@@ -193,6 +237,15 @@ class PmpkForm(forms.ModelForm):
         fields = ['number', 'date_issued', 'education_programm_pmpk']
         widgets = {'date_issued': forms.DateInput(attrs={'type': 'date'})}
 
+    def clean(self):
+        cleaned_data = super().clean()
+        # Проверяем статус ОВЗ в родительской форме
+        status_ovz = self.data.get('disability-status_ovz')
+        if status_ovz == 'Да':
+            for field in self.Meta.fields:
+                if not cleaned_data.get(field):
+                    self.add_error(field, 'Это поле обязательно при статусе ОВЗ')
+        return cleaned_data
 
 class EducationTargetForm(forms.ModelForm):
     class Meta:
