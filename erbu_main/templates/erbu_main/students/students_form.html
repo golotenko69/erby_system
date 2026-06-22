@@ -79,25 +79,48 @@
 <!-- ================= JS ================= -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-    // Селекторы полей блока трудоустройства
+    // ================= БЛОК 1: ТРУДОУСТРОЙСТВО =================
     const empStatusField = document.getElementById("id_employment_status");
     const reasonField = document.getElementById("id_reason_not_employment");
 
-    // Поля работы
     const jobFields = [
         document.getElementById("id_place_job"),
         document.getElementById("id_position"),
         document.getElementById("id_hiring_date")
     ];
 
-    // Дополнительные окошки для продолжения обучения
     const furtherEduFields = [
         document.getElementById("id_further_education_level"),
         document.getElementById("id_further_institution_name"),
         document.getElementById("id_further_grad_year")
     ];
 
-    // Вспомогательная функция для переключения видимости (работает с тегом <p> от Django .as_p)
+    // ================= БЛОК 2: ИНВАЛИДНОСТЬ И ОВЗ =================
+    const disabilityGroupField = document.getElementById("id_disability_group");
+    const statusOvzField = document.getElementById("id_status_ovz");
+
+    // Поля инвалидности внутри DisabilityInfo, которые нужно скрывать/показывать
+    const disabilityFields = [
+        document.getElementById("id_nosology_type"),
+        document.getElementById("id_year_removal")
+    ];
+
+    // Поля МСЭ (находятся под своим заголовком <h4>МСЭ</h4>)
+    const mseFields = [
+        document.getElementById("id_series"),
+        document.getElementById("id_number"),
+        document.getElementById("id_date_issued"),
+        document.getElementById("id_date_next_examination")
+    ];
+
+    // Поля ПМПК (находятся под своим заголовком <h4>ПМПК</h4>)
+    const pmpkFields = [
+        document.getElementById("id_pmpk-number"), // Проверьте точный ID в HTML (обычно id_pmpk-number или id_number в зависимости от префикса. Если это OneToOne, Django по умолчанию ставит id_number. Но в коде у вас Mse тоже имеет id_number. Если они рендерятся на одной странице, убедитесь, что нет конфликтов ID. В вашем текущем коде они рендерятся как .as_p)
+        document.getElementById("id_pmpk_date_issued"),
+        document.getElementById("id_education_programm_pmpk")
+    ];
+
+    // Вспомогательная функция для переключения видимости строки <p> или заголовков
     function toggleRow(field, show) {
         if (field) {
             const row = field.closest("p");
@@ -105,40 +128,86 @@
         }
     }
 
+    // Функция скрытия заголовков (<h4>), если скрыты дочерние элементы
+    function toggleHeading(fieldInsideBlock, show, headingText) {
+        if (fieldInsideBlock) {
+            const row = fieldInsideBlock.closest("p");
+            if (row) {
+                // Ищем предыдущий элемент h4 относительно блока формы
+                let sibling = row.previousElementSibling;
+                while (sibling) {
+                    if (sibling.tagName === "H4" && sibling.textContent.includes(headingText)) {
+                        sibling.style.display = show ? "block" : "none";
+                        break;
+                    }
+                    sibling = sibling.previousElementSibling;
+                }
+            }
+        }
+    }
+
+    // Логика управления блоком Трудоустройства
     function managementLogic() {
         const status = empStatusField ? empStatusField.value : "";
         const reason = reasonField ? reasonField.value : "";
 
         if (status === "Да") {
-            // Показываем работу, скрываем причины и дальнейшую учебу
             jobFields.forEach(f => toggleRow(f, true));
             toggleRow(reasonField, false);
             furtherEduFields.forEach(f => toggleRow(f, false));
         } else if (status === "Нет") {
-            // Скрываем работу, показываем причину
             jobFields.forEach(f => toggleRow(f, false));
             toggleRow(reasonField, true);
 
-            // Если причина "Продолжил обучение" (значение 'обучение' из моделей)
             if (reason === "обучение") {
                 furtherEduFields.forEach(f => toggleRow(f, true));
             } else {
                 furtherEduFields.forEach(f => toggleRow(f, false));
             }
         } else {
-            // Если ничего не выбрано — скрываем всё вариативное
             jobFields.forEach(f => toggleRow(f, false));
             toggleRow(reasonField, false);
             furtherEduFields.forEach(f => toggleRow(f, false));
         }
     }
 
+    // Логика управления блоками Инвалидности и ОВЗ
+    function disabilityAndOvzLogic() {
+        // 1. Проверка инвалидности: если выбрана группа (поля не пустые)
+        const hasDisability = disabilityGroupField && disabilityGroupField.value !== "";
+
+        // Показываем/скрываем поля нозологии и даты снятия
+        disabilityFields.forEach(f => toggleRow(f, hasDisability));
+        // Показываем/скрываем поля МСЭ
+        mseFields.forEach(f => toggleRow(f, hasDisability));
+        // Управляем заголовком "МСЭ"
+        if (mseFields[0]) toggleHeading(mseFields[0], hasDisability, "МСЭ");
+
+        // 2. Проверка ОВЗ: статус равен "Да"
+        const hasOvz = statusOvzField && statusOvzField.value === "Да";
+
+        // Так как поля ПМПК в Django-форме могут иметь пересекающиеся ID с МСЭ (например, id_number),
+        // найдем их гарантированно через name атрибуты, если document.getElementById вернул null
+        const pmpkNum = document.getElementById("id_number") ? (document.getElementById("id_number").name.includes("pmpk") ? document.getElementById("id_number") : document.getElementsByName("number")[1] || document.getElementsByName("pmpk-number")[0]) : null;
+        const pmpkDate = document.getElementsByName("date_issued")[1] || document.getElementById("id_date_issued");
+        const pmpkProg = document.getElementById("id_education_programm_pmpk");
+
+        const actualPmpkFields = [pmpkNum, pmpkDate, pmpkProg].filter(Boolean);
+
+        actualPmpkFields.forEach(f => toggleRow(f, hasOvz));
+        if (actualPmpkFields[0]) toggleHeading(actualPmpkFields[0], hasOvz, "ПМПК");
+    }
+
     // Навешиваем обработчики событий
     if (empStatusField) empStatusField.addEventListener("change", managementLogic);
     if (reasonField) reasonField.addEventListener("change", managementLogic);
 
-    // Запускаем один раз при загрузке страницы для правильного отображения старых данных
+    if (disabilityGroupField) disabilityGroupField.addEventListener("change", disabilityAndOvzLogic);
+    if (statusOvzField) statusOvzField.addEventListener("change", disabilityAndOvzLogic);
+
+    // Запускаем один раз при загрузке страницы
     managementLogic();
+    disabilityAndOvzLogic();
 });
 
 function addForm(prefix) {
@@ -153,14 +222,12 @@ function addForm(prefix) {
     tempDiv.innerHTML = newFormHtml;
 
     container.appendChild(tempDiv.firstElementChild);
-
     totalInput.value = currentCount + 1;
 }
 
 // Автодобавление одной формы если нет данных
 document.addEventListener("DOMContentLoaded", function () {
-    const prefix = 'parent'; // Оставляем только parent, так как это единственный формсет
-
+    const prefix = 'parent';
     const initialInput = document.getElementById(`id_${prefix}-INITIAL_FORMS`);
     const totalInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
     const formsContainer = document.getElementById(`${prefix}-forms`);
