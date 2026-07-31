@@ -40,9 +40,6 @@ def generate_random_string(length=8):
 def index_view(request):
     return render(request, 'erbu_main/index.html')
 
-def about_view(request):
-    return render(request, 'erbu_main/about.html')
-
 def students_view(request):
     return render(request, 'erbu_main/students.html')
 
