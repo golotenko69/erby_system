@@ -1,0 +1,45 @@
+name: Deploy Django to Beget
+
+on:
+  push:
+    branches:
+      - main  # или master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Sync files via RSYNC
+        uses: easingthemes/ssh-deploy-action@v5.0.0
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.BEGET_HOST }}
+          REMOTE_USER: ${{ secrets.BEGET_USER }}
+          REMOTE_PORT: ${{ secrets.BEGET_PORT }}
+          ARGS: "-rcvrvz --delete"
+          SOURCE: "."
+          TARGET: "/home/z/zabteh/erbu.zabteh.ru/public_html"
+          EXCLUDE: "/venv/, /.git/, /.idea/, /db.sqlite3, /.env, /tmp/restart.txt"
+
+      - name: Post-deploy commands (Migrate, Static, Restart)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.BEGET_HOST }}
+          username: ${{ secrets.BEGET_USER }}
+          key: ${{ secrets.BEGET_SSH_KEY }}
+          port: ${{ secrets.BEGET_PORT }}
+          script: |
+            # Подключение к Docker-окружению Beget и выполнение команд
+            ssh localhost -p222 << 'EOF'
+              cd /home/z/zabteh/erbu.zabteh.ru/public_html
+              source venv/bin/activate
+              pip install -r requirements.txt
+              python manage.py migrate --noinput
+              python manage.py collectstatic --noinput
+              mkdir -p tmp
+              touch tmp/restart.txt
+            EOF
