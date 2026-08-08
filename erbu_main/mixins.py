@@ -17,7 +17,7 @@ class TeacherRequiredMixin(UserPassesTestMixin):
     def test_func(self):
         user = self.request.user
 
-        # Если не авторизован — сразу отказцу
+        # Если не авторизован — сразу отказцуd
         if not user.is_authenticated:
             return False
 
