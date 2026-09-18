@@ -199,6 +199,7 @@ class DisabilityInfo(models.Model):
         null=True
     )
     year_removal = models.DateField("Дата снятия", blank=True, null=True)
+    disability_indefinite = models.BooleanField("Инвалидность бессрочно", default=False)
 
 class Mse(models.Model):
     disability = models.OneToOneField(
@@ -219,7 +220,7 @@ class Pmpk(models.Model):
     )
     number = models.CharField("Номер заключения", max_length=50, blank=True, null=True)
     date_issued = models.DateField("Дата выдачи", blank=True, null=True)
-    education_programm_pmpk = models.CharField("Рекомендованная программа", max_length=100, blank=True, null=True)
+    education_programm_pmpk = models.CharField("Рекомендованная программа", max_length=300, blank=True, null=True)
 
 
 class EducationTarget(models.Model):

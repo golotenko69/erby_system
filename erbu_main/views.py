@@ -256,6 +256,10 @@ class StudentDetailView(TeacherRequiredMixin, DetailView):
         # Образование
         context['education_ended'] = getattr(student, 'education_ended', None)
         context['education_process'] = getattr(student, 'education_process', None)
+        if context['education_process'] and context['education_process'].term:
+            months_total = context['education_process'].term
+            years, months = divmod(months_total, 12)
+            context['education_process'].term_display = (f"{years} г. {months} мес." if years and months else f"{years} г." if years else f"{months} мес.")
         context['education_target'] = getattr(student, 'education_target', None)
         # Родители
         context['parents'] = student.parents.all()
@@ -753,10 +757,10 @@ class ExportStudentsExcelView(View):
                     d.get_status_ovz_display() if d else '',
                     d.get_disability_group_display() if d else '',  # ИЗМЕНЕНО
                     d.get_nosology_type_display() if d else '',  # ИЗМЕНЕНО
-                    d.year_removal.strftime('%d.%m.%Y') if d and d.year_removal else '',
+                    ('Бессрочно' if d and d.disability_indefinite else (d.year_removal.strftime('%d.%m.%Y') if d and d.year_removal else '')),
                     mse.series if mse else '', mse.number if mse else '',
                     mse.date_issued.strftime('%d.%m.%Y') if mse and mse.date_issued else '',
-                    mse.date_next_examination.strftime('%d.%m.%Y') if mse and mse.date_next_examination else '',
+                    ('' if d and d.disability_indefinite else (mse.date_next_examination.strftime('%d.%m.%Y') if mse and mse.date_next_examination else '')),
                     pmpk.number if pmpk else '',
                     pmpk.date_issued.strftime('%d.%m.%Y') if pmpk and pmpk.date_issued else '',
                     pmpk.education_programm_pmpk if pmpk else ''
@@ -772,7 +776,8 @@ class ExportStudentsExcelView(View):
                     ee.series if ee else '', ee.date_issued.strftime('%d.%m.%Y') if ee and ee.date_issued else '',
                     ep.education_institution.name if ep and ep.education_institution else '',
                     ep.profession if ep else '',
-                    ep.course if ep else '', ep.get_form_display() if ep else '', ep.term if ep else '',
+                    ep.course if ep else '', ep.get_form_display() if ep else '',
+                    (f'{ep.term // 12} г. {ep.term % 12} мес.' if ep and ep.term and ep.term // 12 and ep.term % 12 else f'{ep.term // 12} г.' if ep and ep.term and ep.term % 12 == 0 else f'{ep.term} мес.' if ep and ep.term else ''),
                     ep.grad_date.strftime('%d.%m.%Y') if ep and ep.grad_date else '',
                     et.name_organization if et else '', et.agreement if et else '', et.abilimpiks if et else ''
                 ])

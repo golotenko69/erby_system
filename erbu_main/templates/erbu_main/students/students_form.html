@@ -92,7 +92,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const disabGroupRow = document.getElementById("id_disability-disability_group")?.closest('p');
     const nosologyRow = document.getElementById("id_disability-nosology_type")?.closest('p');
     const yearRemovalRow = document.getElementById("id_disability-year_removal")?.closest('p');
+    const indefiniteField = document.getElementById("id_disability-disability_indefinite");
+    const indefiniteRow = indefiniteField?.closest('p');
     const mseBlock = document.getElementById("mse-block");
+    const mseNextExamField = document.getElementById("id_mse-date_next_examination");
 
     // Блок зависящий от ОВЗ
     const pmpkBlock = document.getElementById("pmpk-block");
@@ -103,8 +106,23 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (disabGroupRow) disabGroupRow.style.display = isDisab ? "block" : "none";
         if (nosologyRow) nosologyRow.style.display = isDisab ? "block" : "none";
+        if (indefiniteRow) indefiniteRow.style.display = isDisab ? "block" : "none";
         if (yearRemovalRow) yearRemovalRow.style.display = isDisab ? "block" : "none";
         if (mseBlock) mseBlock.style.display = isDisab ? "block" : "none";
+        updateIndefiniteVisibility();
+    }
+
+    function updateIndefiniteVisibility() {
+        if (!indefiniteField) return;
+        const isIndefinite = indefiniteField.checked;
+        if (yearRemovalRow) yearRemovalRow.style.display =
+            (!hasDisabilityField || hasDisabilityField.value !== "Да" || isIndefinite) ? "none" : "block";
+        if (mseNextExamField) {
+            mseNextExamField.disabled = isIndefinite;
+            if (isIndefinite) mseNextExamField.value = "";
+            const row = mseNextExamField.closest("p");
+            if (row) row.style.display = isIndefinite ? "none" : "block";
+        }
     }
 
     function updateOvzVisibility() {
@@ -115,6 +133,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (hasDisabilityField) hasDisabilityField.addEventListener("change", updateDisabilityVisibility);
     if (statusOvzField) statusOvzField.addEventListener("change", updateOvzVisibility);
+    if (indefiniteField) indefiniteField.addEventListener("change", updateIndefiniteVisibility);
 
     // Инициализация при загрузке
     updateDisabilityVisibility();

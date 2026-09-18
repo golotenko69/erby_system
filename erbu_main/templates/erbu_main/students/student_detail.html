@@ -46,7 +46,9 @@
             </p>
             <p><strong>Группа инвалидности:</strong> {{ disability.disability_group|default:"Не указана" }}</p>
             <p><strong>Тип нозологии:</strong> {{ disability.get_nosology_type_display|default:"Не указан" }}</p>
-            <p><strong>Дата снятия:</strong> {{ disability.year_removal|date:"d.m.Y"|default:"Не указана" }}</p>
+            <p><strong>Срок инвалидности:</strong>
+                {% if disability.disability_indefinite %}Бессрочно{% else %}{{ disability.year_removal|date:"d.m.Y"|default:"Не указана" }}{% endif %}
+            </p>
 
             {# МСЭ #}
             <h4 style="margin-top: 16px;"> МСЭ</h4>
@@ -54,7 +56,9 @@
                 <p><strong>Серия:</strong> {{ mse.series|default:"—" }}</p>
                 <p><strong>Номер:</strong> {{ mse.number|default:"—" }}</p>
                 <p><strong>Дата выдачи:</strong> {{ mse.date_issued|date:"d.m.Y"|default:"—" }}</p>
-                <p><strong>Дата переосвидетельствования:</strong> {{ mse.date_next_examination|date:"d.m.Y"|default:"—" }}</p>
+                <p><strong>Дата переосвидетельствования:</strong>
+                    {% if disability.disability_indefinite %}—{% else %}{{ mse.date_next_examination|date:"d.m.Y"|default:"—" }}{% endif %}
+                </p>
             {% else %}
                 <p style="color: #94a3b8;">Нет данных МСЭ</p>
             {% endif %}
@@ -100,7 +104,7 @@
             <p>Профессия: {{ education_process.profession|default:"—" }}</p>
             <p>Курс: {{ education_process.course|default:"—" }}</p>
             <p>Форма обучения: {{ education_process.get_form_display|default:"—" }}</p>
-            <p>Срок обучения: {{ education_process.term|default:"—" }} мес.</p>
+            <p><strong>Срок обучения:</strong> {{ education_process.term_display|default:"—" }}</p>
             <p>Дата выпуска: {{ education_process.grad_date|date:"d.m.Y"|default:"—" }}</p>
         </div>
     {% else %}

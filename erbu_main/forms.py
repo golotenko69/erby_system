@@ -139,26 +139,22 @@ class EducationEndedForm(forms.ModelForm):
 
 
 class EducationProcessForm(forms.ModelForm):
+    term = forms.CharField(
+        label="Срок обучения", required=True,
+        help_text="Формат: 10 мес. или 1 г. 10 мес.",
+        widget=forms.TextInput(attrs={'placeholder': 'Например: 1 г. 10 мес.', 'inputmode': 'text'})
+    )
     class Meta:
         model = EducationProcess
-        fields = [
-            'education_institution', 'profession', 'course',
-            'form', 'term', 'grad_date'
-        ]
-        labels = {
-            'education_institution': 'Название учреждения',
-        }
-        widgets = {
-            'grad_date': forms.DateInput(attrs={'type': 'date'}),
-        }
-
+        fields = ['education_institution', 'profession', 'course', 'form', 'term', 'grad_date']
+        labels = {'education_institution': 'Название учреждения'}
+        widgets = {'grad_date': forms.DateInput(attrs={'type': 'date'})}
     def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
-
-        for field in self.fields.values():
-            field.required = True
-
+        self.user = kwargs.pop('user', None); super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk and self.instance.term:
+            years, months = divmod(self.instance.term, 12)
+            self.fields['term'].initial = (f"{years} г. {months} мес." if years and months else f"{years} г." if years else f"{months} мес.")
+        for field in self.fields.values(): field.required = True
         if self.user and getattr(self.user, 'role', None) == 'TEACHER':
             institution = getattr(self.user, 'education_institution', None)
             if institution:
@@ -168,6 +164,17 @@ class EducationProcessForm(forms.ModelForm):
             else:
                 self.fields['education_institution'].queryset = EducationInstitution.objects.none()
                 self.fields['education_institution'].widget.attrs['disabled'] = True
+    def clean_term(self):
+        value=(self.cleaned_data.get('term') or '').strip().lower(); import re
+        if value.isdigit(): total=int(value)
+        else:
+            m=re.fullmatch(r'(?:(\d+)\s*г(?:од|ода|од)?\.?)?\s*(?:(\d+)\s*м(?:ес(?:яц|яца|яцев)?)?\.?)?',value)
+            if not m or not (m.group(1) or m.group(2)): raise ValidationError('Укажите срок в формате «10 мес.» или «1 г. 10 мес.»')
+            y=int(m.group(1) or 0); mo=int(m.group(2) or 0)
+            if mo>11: raise ValidationError('Количество месяцев после лет должно быть от 0 до 11.')
+            total=y*12+mo
+        if total<=0: raise ValidationError('Срок обучения должен быть больше нуля.')
+        return total
 
 
 class DisabilityForm(forms.ModelForm):
@@ -180,7 +187,8 @@ class DisabilityForm(forms.ModelForm):
     class Meta:
         model = DisabilityInfo
         # Располагаем поля в логичном порядке
-        fields = ['has_disability', 'disability_group', 'nosology_type', 'year_removal', 'status_ovz']
+        fields = ['has_disability', 'disability_group', 'nosology_type', 'year_removal', 'disability_indefinite', 'status_ovz']
+        labels = {'year_removal': 'Дата снятия', 'disability_indefinite': 'Инвалидность бессрочно'}
         widgets = {'year_removal': forms.DateInput(attrs={'type': 'date'})}
 
     def __init__(self, *args, **kwargs):
@@ -192,6 +200,7 @@ class DisabilityForm(forms.ModelForm):
             self.fields['has_disability'].initial = 'Нет'
 
         self.fields['status_ovz'].required = True
+        self.fields['disability_indefinite'].required = False
 
     def clean(self):
         cleaned_data = super().clean()
@@ -203,11 +212,16 @@ class DisabilityForm(forms.ModelForm):
                 self.add_error('disability_group', 'Укажите группу инвалидности')
             if not cleaned_data.get('nosology_type'):
                 self.add_error('nosology_type', 'Укажите нозологию')
+            if cleaned_data.get('disability_indefinite'):
+                cleaned_data['year_removal'] = None
+            elif not cleaned_data.get('year_removal'):
+                self.add_error('year_removal', 'Укажите дату снятия или отметьте «Инвалидность бессрочно».')
         else:
             # Если инвалидности НЕТ, очищаем поля (чтобы мусор не летел в БД)
             cleaned_data['disability_group'] = None
             cleaned_data['nosology_type'] = None
             cleaned_data['year_removal'] = None
+            cleaned_data['disability_indefinite'] = False
 
         return cleaned_data
 
@@ -225,7 +239,11 @@ class MseForm(forms.ModelForm):
         # Проверяем, была ли выбрана инвалидность в родительской форме
         has_disab = self.data.get('disability-has_disability')
         if has_disab == 'Да':
+            is_indefinite = self.data.get('disability-disability_indefinite') in ('on', 'True', 'true', '1')
             for field in self.Meta.fields:
+                if field == 'date_next_examination' and is_indefinite:
+                    cleaned_data[field] = None
+                    continue
                 if not cleaned_data.get(field):
                     self.add_error(field, 'Это поле обязательно при наличии инвалидности')
         return cleaned_data
@@ -235,7 +253,14 @@ class PmpkForm(forms.ModelForm):
     class Meta:
         model = Pmpk
         fields = ['number', 'date_issued', 'education_programm_pmpk']
-        widgets = {'date_issued': forms.DateInput(attrs={'type': 'date'})}
+        widgets = {
+            'date_issued': forms.DateInput(attrs={'type': 'date'}),
+            'education_programm_pmpk': forms.Textarea(attrs={
+                'rows': 4,
+                'style': 'width: 100%; min-height: 90px; resize: vertical;',
+                'placeholder': 'Введите полное название рекомендованной программы',
+            }),
+        }
 
     def clean(self):
         cleaned_data = super().clean()
