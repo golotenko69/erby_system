@@ -1,10 +1,13 @@
-from django.test import TestCase
-from django.utils import timezone
-from erbu_main.models import Student, DisabilityInfo
-from django.urls import reverse
+import io
+
+import openpyxl
 from django.contrib.auth import get_user_model
-from erbu_main.models import Student, EducationProcess, EducationInstitution
+from django.test import TestCase
+from django.urls import reverse
+from django.utils import timezone
+
 from erbu_main.forms import StudentForm
+from erbu_main.models import DisabilityInfo, EducationInstitution, EducationProcess, Student
 
 class StudentModelTest(TestCase):
     def setUp(self):
@@ -79,6 +82,42 @@ class StudentAccessViewsTest(TestCase):
             course=2,  # Передаем обязательный курс
             form='очная'  # Передаем форму обучения
         )
+
+    def export_rows(self, user, **data):
+        """Выполняет экспорт от имени user и возвращает (шапка, фамилии студентов из отчёта)."""
+        self.client.force_login(user)
+        response = self.client.post(reverse('student_export_excel'), data, secure=True)
+        self.assertEqual(response.status_code, 200)
+        sheet = openpyxl.load_workbook(io.BytesIO(response.content)).active
+        rows = list(sheet.iter_rows(values_only=True))
+        return rows[0], [row[1] for row in rows[1:]]
+
+    def test_admin_export_without_filter_contains_all_institutions(self):
+        _, last_names = self.export_rows(self.admin_user)
+        self.assertEqual(last_names, ["Первый", "Второй"])
+
+    def test_admin_export_filtered_by_one_institution(self):
+        _, last_names = self.export_rows(self.admin_user, institutions=[self.inst_2.pk])
+        self.assertEqual(last_names, ["Второй"])
+
+    def test_admin_export_filtered_by_several_institutions(self):
+        _, last_names = self.export_rows(self.admin_user, institutions=[self.inst_1.pk, self.inst_2.pk])
+        self.assertEqual(sorted(last_names), ["Второй", "Первый"])
+
+    def test_admin_export_ignores_invalid_institution_id(self):
+        _, last_names = self.export_rows(self.admin_user, institutions=["abc"])
+        self.assertEqual(len(last_names), 2)
+
+    def test_teacher_export_is_limited_to_own_institution(self):
+        # Ответственное лицо не может выгрузить чужое заведение, подставив его id
+        _, last_names = self.export_rows(self.teacher_user, institutions=[self.inst_2.pk])
+        self.assertEqual(last_names, ["Первый"])
+
+    def test_base_section_is_always_exported(self):
+        header, _ = self.export_rows(self.admin_user, sections=["passport"])
+        self.assertEqual(header[0], "ID")
+        self.assertIn("Паспорт Серия", header)
+
 
 class StudentFormTest(TestCase):
     def test_valid_student_form(self):

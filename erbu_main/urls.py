@@ -1,8 +1,6 @@
-from django.urls import path, include
-from . import views
-from django.conf.urls.static import static
+from django.urls import path
 
-from .views import ExportStudentsExcelView, LogDetailJsonView
+from . import views
 
 urlpatterns = [
     path('', views.index_view, name='index'),
@@ -17,8 +15,8 @@ urlpatterns = [
     path('institution/add/', views.EducationInstitutionCreateView.as_view(), name='institution_add'),
     path('institution/<int:institution_id>/', views.EducationInstitutionDetailView.as_view(), name='institution_detail'),
     path('institution/<int:institution_id>/edit/', views.EducationInstitutionUpdateView.as_view(), name='institution_edit'),
-    path('students/export/excel/', ExportStudentsExcelView.as_view(), name='student_export_excel'),
+    path('students/export/excel/', views.ExportStudentsExcelView.as_view(), name='student_export_excel'),
     path('institution/<int:institution_id>/delete/', views.EducationInstitutionDeleteView.as_view(), name='institution_delete'),
     path('logs/mark-read/', views.mark_logs_read, name='mark_logs_read'),
-    path('logs/api/<int:log_id>/', LogDetailJsonView.as_view(), name='log_detail_api'),
+    path('logs/api/<int:log_id>/', views.LogDetailJsonView.as_view(), name='log_detail_api'),
 ]

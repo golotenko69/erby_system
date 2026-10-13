@@ -1,10 +1,7 @@
-from django.contrib.auth.mixins import AccessMixin
-from django.contrib.auth.mixins import UserPassesTestMixin
-from django.views.generic import ListView
 from django.contrib import messages
-from django.shortcuts import redirect
 from django.contrib.auth import logout
-from users.models import CustomUser
+from django.contrib.auth.mixins import UserPassesTestMixin
+from django.shortcuts import redirect
 
 
 class AdminRequiredMixin(UserPassesTestMixin):
@@ -17,7 +14,7 @@ class TeacherRequiredMixin(UserPassesTestMixin):
     def test_func(self):
         user = self.request.user
 
-        # Если не авторизован — сразу отказцуd
+        # Если не авторизован — сразу отказ
         if not user.is_authenticated:
             return False
 

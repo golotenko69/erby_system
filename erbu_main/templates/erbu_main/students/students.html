@@ -25,7 +25,7 @@
                 Добавить студента
             </a>
 
-            <button type="button" class="btn-secondary" id="openExportModalBtn" style="margin-left: 10px; padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+            <button type="button" class="btn-secondary btn-export" id="openExportModalBtn">
                 <span class="btn-icon">📊</span> Сформировать отчет (Excel)
             </button>
         </div>
@@ -36,40 +36,57 @@
         </div>
     </div>
 
-    <div id="exportModal" class="custom-modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
-        <div class="modal-content" style="background-color: #fff; padding: 25px; border-radius: 8px; width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative;">
-            <span class="close-modal" id="closeExportModalBtn" style="position: absolute; right: 15px; top: 10px; font-size: 24px; cursor: pointer; color: #aaa;">&times;</span>
-            <h3 style="margin-top: 0; margin-bottom: 15px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">Настройка экспорта в Excel</h3>
+    <div id="exportModal" class="custom-modal" hidden>
+        <div class="modal-content export-modal">
+            <button type="button" class="close-modal" id="closeExportModalBtn" aria-label="Закрыть">&times;</button>
+            <h3 class="modal-title">Настройка экспорта в Excel</h3>
 
             <form action="{% url 'student_export_excel' %}" method="POST" id="exportForm">
                 {% csrf_token %}
-                <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Выберите разделы данных, которые необходимо включить в отчет:</p>
 
-                <div class="checkbox-group" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
-                    <label style="display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer;">
-                        <input type="checkbox" name="sections" value="base" checked readonly onclick="return false;">
-                        <strong>Основная информация (Обязательно)</strong>
+                {% if export_institutions %}
+                    <fieldset class="export-fieldset">
+                        <legend>Учебные заведения</legend>
+                        <label class="export-checkbox">
+                            <input type="checkbox" id="institutionsAll"> <strong>Выбрать все</strong>
+                        </label>
+                        <div class="export-institutions">
+                            {% for institution in export_institutions %}
+                                <label class="export-checkbox">
+                                    <input type="checkbox" name="institutions" value="{{ institution.pk }}"> {{ institution.name }}
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <p class="export-hint">Если ничего не выбрано, в отчёт попадут студенты всех заведений.</p>
+                    </fieldset>
+                {% endif %}
+
+                <fieldset class="export-fieldset">
+                    <legend>Разделы данных</legend>
+                    <input type="hidden" name="sections" value="base">
+                    <label class="export-checkbox">
+                        <input type="checkbox" checked disabled> <strong>Основная информация (обязательно)</strong>
                     </label>
-                    <label style="display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer;">
+                    <label class="export-checkbox">
                         <input type="checkbox" name="sections" value="passport"> Паспортные данные
                     </label>
-                    <label style="display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer;">
+                    <label class="export-checkbox">
                         <input type="checkbox" name="sections" value="disability" checked> Данные об инвалидности и ОВЗ (МСЭ, ПМПК)
                     </label>
-                    <label style="display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer;">
+                    <label class="export-checkbox">
                         <input type="checkbox" name="sections" value="education"> Информация об обучении (прошлое и текущее)
                     </label>
-                    <label style="display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer;">
+                    <label class="export-checkbox">
                         <input type="checkbox" name="sections" value="employment"> Трудоустройство / ЦЗН
                     </label>
-                    <label style="display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer;">
+                    <label class="export-checkbox">
                         <input type="checkbox" name="sections" value="parents"> Сведения о родителях
                     </label>
-                </div>
+                </fieldset>
 
-                <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #eee; padding-top: 15px;">
-                    <button type="button" id="cancelExportBtn" style="padding: 8px 16px; background: #e0e0e0; border: none; border-radius: 4px; cursor: pointer;">Отмена</button>
-                    <button type="submit" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Скачать Excel</button>
+                <div class="export-actions">
+                    <button type="button" class="btn-secondary" id="cancelExportBtn">Отмена</button>
+                    <button type="submit" class="btn-primary">Скачать Excel</button>
                 </div>
             </form>
         </div>
@@ -171,61 +188,42 @@
 
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // --- Существующий код поиска студентов ---
+        document.addEventListener('DOMContentLoaded', function () {
+            // --- Поиск студентов ---
             const searchInput = document.getElementById('studentSearch');
             if (searchInput) {
-                searchInput.addEventListener('input', function() {
+                searchInput.addEventListener('input', function () {
                     const searchTerm = this.value.toLowerCase();
-                    const studentCards = document.querySelectorAll('.student-card-modern');
-
-                    studentCards.forEach(card => {
+                    document.querySelectorAll('.student-card-modern').forEach(card => {
                         const studentName = card.querySelector('.student-name-modern').textContent.toLowerCase();
-                        if (studentName.includes(searchTerm)) {
-                            card.style.display = 'flex';
-                        } else {
-                            card.style.display = 'none';
-                        }
+                        card.style.display = studentName.includes(searchTerm) ? 'flex' : 'none';
                     });
                 });
             }
 
-            // --- Логика Модального Окна Экспорта ---
+            // --- Модальное окно экспорта ---
             const modal = document.getElementById('exportModal');
             const openBtn = document.getElementById('openExportModalBtn');
-            const closeBtn = document.getElementById('closeExportModalBtn');
-            const cancelBtn = document.getElementById('cancelExportBtn');
-            const exportForm = document.getElementById('exportForm');
+            if (!modal || !openBtn) return;
 
-            if (openBtn && modal) {
-                // Открыть модальное окно
-                openBtn.addEventListener('click', function() {
-                    modal.style.display = 'flex';
-                });
+            const closeModal = () => { modal.hidden = true; };
+            openBtn.addEventListener('click', () => { modal.hidden = false; });
+            document.getElementById('closeExportModalBtn').addEventListener('click', closeModal);
+            document.getElementById('cancelExportBtn').addEventListener('click', closeModal);
+            modal.addEventListener('click', event => { if (event.target === modal) closeModal(); });
+            document.addEventListener('keydown', event => { if (event.key === 'Escape') closeModal(); });
 
-                // Закрыть при нажатии на крестик
-                closeBtn.addEventListener('click', function() {
-                    modal.style.display = 'none';
-                });
+            // Закрываем окно после отправки формы (начала скачивания)
+            document.getElementById('exportForm').addEventListener('submit', () => setTimeout(closeModal, 500));
 
-                // Закрыть при нажатии на "Отмена"
-                cancelBtn.addEventListener('click', function() {
-                    modal.style.display = 'none';
-                });
-
-                // Закрыть при клике вне зоны контента окна
-                window.addEventListener('click', function(event) {
-                    if (event.target === modal) {
-                        modal.style.display = 'none';
-                    }
-                });
-
-                // Закрывать окно автоматически после отправки (начала скачивания)
-                exportForm.addEventListener('submit', function() {
-                    setTimeout(() => {
-                        modal.style.display = 'none';
-                    }, 500);
-                });
+            // «Выбрать все» учебные заведения (у ответственного лица этого блока нет)
+            const selectAll = document.getElementById('institutionsAll');
+            if (selectAll) {
+                const items = document.querySelectorAll('input[name="institutions"]');
+                selectAll.addEventListener('change', () => items.forEach(item => { item.checked = selectAll.checked; }));
+                items.forEach(item => item.addEventListener('change', () => {
+                    selectAll.checked = Array.from(items).every(i => i.checked);
+                }));
             }
         });
     </script>

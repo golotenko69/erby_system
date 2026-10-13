@@ -1,50 +1,74 @@
-from django.contrib.auth import get_user_model
-from django.contrib.auth.middleware import get_user
-from django.db.models import Q
-from django.http import HttpResponseForbidden
-from django.urls import reverse_lazy
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+import random
+import string
+
+import openpyxl
 from django.contrib import messages
-from django.shortcuts import render, get_object_or_404
-from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import get_user_model
+from django.core.exceptions import PermissionDenied
+from django.db.models import Q
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import View
-from datetime import timedelta
-from django.http import HttpResponse
-import openpyxl
-import string
-import random
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from erbu_main.forms import StudentForm, PassportForm, DisabilityForm, MseForm, PmpkForm, ParentFormSet, EducationInstitutionForm, EducationEndedForm, EducationProcessForm, EducationTargetForm, EmploymentForm
+from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
+
+from erbu_main.forms import (
+    DisabilityForm, EducationEndedForm, EducationInstitutionForm, EducationProcessForm,
+    EducationTargetForm, EmploymentForm, MseForm, ParentFormSet, PassportForm, PmpkForm, StudentForm,
+)
 from erbu_main.mixins import AdminRequiredMixin, TeacherRequiredMixin
-from erbu_main.models import Student, EducationTarget, DisabilityInfo, EducationProcess, EducationInstitution, StudentLog
+from erbu_main.models import DisabilityInfo, EducationInstitution, EducationProcess, Student, StudentLog
 from users.forms import CustomUserCreationForm
-from django.http import JsonResponse
 
 User = get_user_model()
 
-def mark_logs_read(request):
-    """Фоновая функция для сброса счетчика уведомлений"""
-    if request.method == "POST" and request.user.is_authenticated and getattr(request.user, 'role', None) == 'ADMIN':
-        # Находим все непрочитанные и делаем их прочитанными
-        StudentLog.objects.filter(is_read=False).update(is_read=True)
-        return JsonResponse({"status": "success"})
-    return JsonResponse({"status": "error"}, status=400)
 
-# Вспомогательная функция для генерации строк
 def generate_random_string(length=8):
-    letters_and_digits = string.ascii_letters + string.digits
-    return ''.join(random.choice(letters_and_digits) for i in range(length))
+    """Случайная строка из букв и цифр (логины и пароли ответственных лиц)."""
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(random.choice(alphabet) for _ in range(length))
 
-# Create your views here.
+
+def format_term(months):
+    """Срок обучения в месяцах -> «1 г. 10 мес.» / «2 г.» / «10 мес.»."""
+    if not months:
+        return ''
+    years, rest = divmod(months, 12)
+    if years and rest:
+        return f'{years} г. {rest} мес.'
+    return f'{years} г.' if years else f'{rest} мес.'
+
+
+def students_for_user(user):
+    """Студенты, доступные пользователю: администратору — все, ответственному — своего заведения."""
+    role = getattr(user, 'role', None)
+    if role == 'ADMIN':
+        return Student.objects.all()
+    if role == 'TEACHER':
+        return Student.objects.filter(
+            education_process__education_institution=user.education_institution
+        ).distinct()
+    return Student.objects.none()
+
+
+def mark_logs_read(request):
+    """Фоновая функция для сброса счётчика уведомлений."""
+    if request.method == 'POST' and request.user.is_authenticated and getattr(request.user, 'role', None) == 'ADMIN':
+        StudentLog.objects.filter(is_read=False).update(is_read=True)
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'error'}, status=400)
+
+
 def index_view(request):
     return render(request, 'erbu_main/index.html')
 
-def students_view(request):
-    return render(request, 'erbu_main/students.html')
 
 def contacts_view(request):
     return render(request, 'erbu_main/contacts.html')
+
 
 class StudentsListView(TeacherRequiredMixin, ListView):
     model = Student
@@ -53,17 +77,14 @@ class StudentsListView(TeacherRequiredMixin, ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        user = self.request.user
+        return students_for_user(self.request.user)
 
-        if user.role == 'ADMIN':
-            return Student.objects.all()
-
-        if user.role == 'TEACHER':
-            return Student.objects.filter(
-                education_process__education_institution=user.education_institution
-            ).distinct()
-
-        return Student.objects.none()
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Выбор учебных заведений при экспорте доступен только администратору
+        if getattr(self.request.user, 'role', None) == 'ADMIN':
+            context['export_institutions'] = EducationInstitution.objects.order_by('name')
+        return context
 
 
 class StudentCreateView(TeacherRequiredMixin, CreateView):
@@ -177,26 +198,6 @@ class StudentCreateView(TeacherRequiredMixin, CreateView):
 
         return self.render_to_response(self.get_context_data(form=form))
 
-class StudentUpdateView(TeacherRequiredMixin, UpdateView):
-    model = Student
-    form_class = StudentForm
-    template_name = 'erby/students/student_form.html'
-    success_url = reverse_lazy('students')
-
-    def form_valid(self, form):
-        student = form.save()
-        # ЛОГИРОВАНИЕ ОБНОВЛЕНИЯ
-        user_institution = getattr(self.request.user, 'education_institution', None)
-        StudentLog.objects.create(
-            action='UPDATE',
-            student_name=f"{student.last_name} {student.first_name} {student.middle_name or ''}".strip(),
-            user=self.request.user,
-            institution_name=user_institution.name if user_institution else "Администрация"
-        )
-        messages.success(self.request, f"Студент '{form.instance.first_name} {form.instance.last_name}' успешно обновлен!")
-        return super().form_valid(form)
-
-
 class StudentDeleteView(TeacherRequiredMixin, DeleteView):
     model = Student
     template_name = 'erbu_main/students/student_confirm_delete.html'
@@ -217,17 +218,6 @@ class StudentDeleteView(TeacherRequiredMixin, DeleteView):
 
         messages.success(self.request, f"Студент '{obj.first_name} {obj.last_name}' успешно удален!")
         return super().delete(request, *args, **kwargs)
-
-class EducationDeleteView(AdminRequiredMixin, DeleteView):
-    model = EducationTarget
-    template_name = 'erby/teachers/teacher_confirm_delete.html'
-    success_url = reverse_lazy('teachers')
-    pk_url_kwarg = 'education_id'
-
-    def post(self, request, *args, **kwargs):
-        obj = self.get_object()
-        messages.success(self.request, f"Учитель {obj.user.first_name} {obj.user.last_name} успешно удален!")
-        return super().delete(request, *args, **kwargs)\
 
 class StudentDetailView(TeacherRequiredMixin, DetailView):
     model = Student
@@ -257,9 +247,7 @@ class StudentDetailView(TeacherRequiredMixin, DetailView):
         context['education_ended'] = getattr(student, 'education_ended', None)
         context['education_process'] = getattr(student, 'education_process', None)
         if context['education_process'] and context['education_process'].term:
-            months_total = context['education_process'].term
-            years, months = divmod(months_total, 12)
-            context['education_process'].term_display = (f"{years} г. {months} мес." if years and months else f"{years} г." if years else f"{months} мес.")
+            context['education_process'].term_display = format_term(context['education_process'].term)
         context['education_target'] = getattr(student, 'education_target', None)
         # Родители
         context['parents'] = student.parents.all()
@@ -493,7 +481,7 @@ class StudentFullEditView(UpdateView):
                 student_institution = obj.education_process.education_institution
 
             if student_institution != self.request.user.education_institution:
-                raise HttpResponseForbidden("Нет доступа")
+                raise PermissionDenied("Нет доступа")
         return obj
 
     def get_context_data(self, **kwargs):
@@ -645,178 +633,169 @@ class StudentFullEditView(UpdateView):
 
         return self.render_to_response(self.get_context_data(form=form))
 
-class ExportStudentsExcelView(View):
+def _date(value):
+    return value.strftime('%d.%m.%Y') if value else ''
+
+
+def _base_row(student):
+    return [
+        student.student_id, student.last_name, student.first_name, student.middle_name,
+        student.get_status_display(), student.get_sex_display(), student.email, student.phone,
+        _date(student.birthday), student.snils, student.inn,
+    ]
+
+
+def _passport_row(student):
+    p = getattr(student, 'passport', None)
+    if not p:
+        return [''] * 7
+    return [p.series, p.number, p.issued, _date(p.date_issued), p.department_code, p.place_birth, p.place_resident]
+
+
+def _disability_row(student):
+    d = getattr(student, 'disability_info', None)
+    if not d:
+        return [''] * 11
+    mse = getattr(d, 'mse', None)
+    pmpk = getattr(d, 'pmpk', None)
+    if d.disability_indefinite:
+        removal, next_examination = 'Бессрочно', ''
+    else:
+        removal = _date(d.year_removal)
+        next_examination = _date(mse.date_next_examination) if mse else ''
+    return [
+        d.get_status_ovz_display(), d.get_disability_group_display(), d.get_nosology_type_display(), removal,
+        mse.series if mse else '', mse.number if mse else '',
+        _date(mse.date_issued) if mse else '', next_examination,
+        pmpk.number if pmpk else '', _date(pmpk.date_issued) if pmpk else '',
+        pmpk.education_programm_pmpk if pmpk else '',
+    ]
+
+
+def _education_row(student):
+    ee = getattr(student, 'education_ended', None)
+    ep = getattr(student, 'education_process', None)
+    et = getattr(student, 'education_target', None)
+    return [
+        ee.get_education_type_display() if ee else '', ee.name if ee else '',
+        ee.get_education_document_display() if ee else '', ee.series if ee else '',
+        _date(ee.date_issued) if ee else '',
+        ep.education_institution.name if ep and ep.education_institution else '',
+        ep.profession if ep else '', ep.course if ep else '', ep.get_form_display() if ep else '',
+        format_term(ep.term) if ep else '', _date(ep.grad_date) if ep else '',
+        et.name_organization if et else '', et.agreement if et else '', et.abilimpiks if et else '',
+    ]
+
+
+def _employment_row(student):
+    em = getattr(student, 'employment', None)
+    if not em:
+        return [''] * 7
+    return [
+        em.get_employment_status_display(), em.place_job, em.position, _date(em.hiring_date),
+        em.get_reason_not_employment_display(), em.get_accounting_employment_display(),
+        em.get_resume_status_display(),
+    ]
+
+
+def _parents_row(student):
+    parents = []
+    for parent in student.parents.all():
+        full_name = f"{parent.last_name or ''} {parent.first_name or ''} {parent.middle_name or ''}".strip()
+        parents.append(f"{full_name} (Тел: {parent.phone or '-'}, Email: {parent.email or '-'})")
+    return ['\n'.join(parents) if parents else 'Нет данных']
+
+
+# Разделы отчёта в порядке вывода колонок: код -> (заголовки, функция строки)
+EXPORT_SECTIONS = {
+    'base': (
+        ['ID', 'Фамилия', 'Имя', 'Отчество', 'Статус', 'Пол', 'Email', 'Телефон', 'Дата рождения', 'СНИЛС', 'ИНН'],
+        _base_row,
+    ),
+    'passport': (
+        ['Паспорт Серия', 'Паспорт Номер', 'Кем выдан', 'Дата выдачи', 'Код подр.', 'Место рождения',
+         'Место жительства'],
+        _passport_row,
+    ),
+    'disability': (
+        ['Статус ОВЗ', 'Группа инвалидности', 'Нозология', 'Дата снятия', 'МСЭ Серия', 'МСЭ Номер',
+         'МСЭ Дата выдачи', 'МСЭ Переосвидетельствование', 'ПМПК Номер', 'ПМПК Дата', 'Реком. программа'],
+        _disability_row,
+    ),
+    'education': (
+        ['Предыд. образование', 'Учреждение (предыд.)', 'Документ об образ.', 'Серия/Номер док.',
+         'Дата выдачи док.', 'Текущее учреждение', 'Профессия', 'Курс', 'Форма обучения', 'Срок обучения',
+         'Дата выпуска', 'Целевое образование', 'Договор', 'Абилимпикс'],
+        _education_row,
+    ),
+    'employment': (
+        ['Трудоустроен', 'Место работы', 'Должность', 'Дата приема', 'Причина нетрудоустр.', 'Состоит в ЦЗН',
+         'Резюме создано'],
+        _employment_row,
+    ),
+    'parents': (['Родители (ФИО, Телефон, Email)'], _parents_row),
+}
+
+
+class ExportStudentsExcelView(TeacherRequiredMixin, View):
+    """Excel-отчёт по студентам.
+
+    POST-параметры:
+      sections     — дополнительные разделы отчёта (ключи EXPORT_SECTIONS), «base» включается всегда;
+      institutions — id учебных заведений (только для администратора);
+                     если не выбрано ни одного — выгружаются студенты всех заведений.
+    Ответственное лицо всегда получает отчёт только по своему заведению.
+    """
+
     def post(self, request, *args, **kwargs):
-        # 1. Получаем выбранные разделы из формы (чекбоксы)
-        export_sections = request.POST.getlist('sections')
+        requested = request.POST.getlist('sections')
+        # «Основная информация» входит в отчёт всегда
+        sections = [code for code in EXPORT_SECTIONS if code == 'base' or code in requested]
 
-        # Если ничего не выбрано, по умолчанию берем базовую информацию
-        if not export_sections:
-            export_sections = ['base']
+        queryset = students_for_user(request.user)
+        if request.user.role == 'ADMIN':
+            institution_ids = [int(pk) for pk in request.POST.getlist('institutions') if pk.isdigit()]
+            if institution_ids:
+                queryset = queryset.filter(education_process__education_institution__in=institution_ids)
 
-        # 2. Фильтруем студентов в зависимости от роли пользователя (как в вашей StudentsListView)
-        user = request.user
-        if user.role == 'ADMIN':
-            queryset = Student.objects.all()
-        elif user.role == 'TEACHER':
-            queryset = Student.objects.filter(
-                education_process__education_institution=user.education_institution
-            ).distinct()
-        else:
-            queryset = Student.objects.none()
-
-        # Оптимизируем запросы с помощью select_related / prefetch_related
         queryset = queryset.select_related(
-            'passport', 'disability_info', 'disability_info__mse',
-            'disability_info__pmpk', 'education_ended',
-            'education_process', 'education_process__education_institution',
-            'education_target', 'employment'
-        ).prefetch_related('parents')
+            'passport', 'disability_info', 'disability_info__mse', 'disability_info__pmpk',
+            'education_ended', 'education_process', 'education_process__education_institution',
+            'education_target', 'employment',
+        ).prefetch_related('parents').order_by(
+            'education_process__education_institution__name', 'last_name', 'first_name'
+        )
 
-        # 3. Инициализируем Excel книгу
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "Студенты"
+        ws.title = 'Студенты'
 
-        # Стилизация
         header_font = Font(name='Arial', size=11, bold=True, color='FFFFFF')
         header_fill = PatternFill(start_color='1F4E78', end_color='1F4E78', fill_type='solid')
-        thin_border = Border(
-            left=Side(style='thin', color='D9D9D9'),
-            right=Side(style='thin', color='D9D9D9'),
-            top=Side(style='thin', color='D9D9D9'),
-            bottom=Side(style='thin', color='D9D9D9')
-        )
+        grey = Side(style='thin', color='D9D9D9')
+        cell_border = Border(left=grey, right=grey, top=grey, bottom=grey)
         align_center = Alignment(horizontal='center', vertical='center', wrap_text=True)
         align_left = Alignment(horizontal='left', vertical='center', wrap_text=True)
 
-        # 4. Динамически формируем шапку таблицы (Headers)
-        headers = []
-
-        # Базовая информация (всегда присутствует или по выбору)
-        if 'base' in export_sections:
-            headers.extend(
-                ['ID', 'Фамилия', 'Имя', 'Отчество', 'Статус', 'Пол', 'Email', 'Телефон', 'Дата рождения', 'СНИЛС',
-                 'ИНН'])
-
-        if 'passport' in export_sections:
-            headers.extend(['Паспорт Серия', 'Паспорт Номер', 'Кем выдан', 'Дата выдачи', 'Код подр.', 'Место рождения',
-                            'Место жительства'])
-
-        if 'disability' in export_sections:
-            headers.extend(['Статус ОВЗ', 'Группа инвалидности', 'Нозология', 'Дата снятия', 'МСЭ Серия', 'МСЭ Номер',
-                            'МСЭ Дата выдачи', 'МСЭ Переосвидетельствование', 'ПМПК Номер', 'ПМПК Дата',
-                            'Реком. программа'])
-
-        if 'education' in export_sections:
-            headers.extend(['Предыд. образование', 'Учреждение (предыд.)', 'Документ об образ.', 'Серия/Номер док.',
-                            'Дата выдачи док.', 'Текущее учреждение', 'Профессия', 'Курс', 'Форма обучения',
-                            'Срок обучения', 'Дата выпуска', 'Целевое образование', 'Договор', 'Абилимпикс'])
-
-        if 'employment' in export_sections:
-            headers.extend(
-                ['Трудоустроен', 'Место работы', 'Должность', 'Дата приема', 'Причина нетрудоустр.', 'Состоит в ЦЗН',
-                 'Резюме создано'])
-
-        if 'parents' in export_sections:
-            headers.extend(['Родители (ФИО, Телефон, Email)'])
-
-        ws.append(headers)
-
-        # Применяем стили к шапке
+        ws.append([header for code in sections for header in EXPORT_SECTIONS[code][0]])
         ws.row_dimensions[1].height = 28
         for cell in ws[1]:
             cell.font = header_font
             cell.fill = header_fill
             cell.alignment = align_center
 
-        # 5. Заполняем данными
         for row_num, student in enumerate(queryset, start=2):
-            row_data = []
-
-            if 'base' in export_sections:
-                row_data.extend([
-                    student.student_id, student.last_name, student.first_name, student.middle_name,
-                    student.get_status_display(), student.get_sex_display(), student.email, student.phone,
-                    student.birthday.strftime('%d.%m.%Y') if student.birthday else '', student.snils, student.inn
-                ])
-
-            if 'passport' in export_sections:
-                p = getattr(student, 'passport', None)
-                row_data.extend([
-                    p.series if p else '', p.number if p else '', p.issued if p else '',
-                    p.date_issued.strftime('%d.%m.%Y') if p and p.date_issued else '',
-                    p.department_code if p else '', p.place_birth if p else '', p.place_resident if p else ''
-                ])
-
-            if 'disability' in export_sections:
-                d = getattr(student, 'disability_info', None)
-                mse = getattr(d, 'mse', None) if d else None
-                pmpk = getattr(d, 'pmpk', None) if d else None
-                row_data.extend([
-                    d.get_status_ovz_display() if d else '',
-                    d.get_disability_group_display() if d else '',  # ИЗМЕНЕНО
-                    d.get_nosology_type_display() if d else '',  # ИЗМЕНЕНО
-                    ('Бессрочно' if d and d.disability_indefinite else (d.year_removal.strftime('%d.%m.%Y') if d and d.year_removal else '')),
-                    mse.series if mse else '', mse.number if mse else '',
-                    mse.date_issued.strftime('%d.%m.%Y') if mse and mse.date_issued else '',
-                    ('' if d and d.disability_indefinite else (mse.date_next_examination.strftime('%d.%m.%Y') if mse and mse.date_next_examination else '')),
-                    pmpk.number if pmpk else '',
-                    pmpk.date_issued.strftime('%d.%m.%Y') if pmpk and pmpk.date_issued else '',
-                    pmpk.education_programm_pmpk if pmpk else ''
-                ])
-
-            if 'education' in export_sections:
-                ee = getattr(student, 'education_ended', None)
-                ep = getattr(student, 'education_process', None)
-                et = getattr(student, 'education_target', None)
-                row_data.extend([
-                    ee.get_education_type_display() if ee else '', ee.name if ee else '',
-                    ee.get_education_document_display() if ee else '',
-                    ee.series if ee else '', ee.date_issued.strftime('%d.%m.%Y') if ee and ee.date_issued else '',
-                    ep.education_institution.name if ep and ep.education_institution else '',
-                    ep.profession if ep else '',
-                    ep.course if ep else '', ep.get_form_display() if ep else '',
-                    (f'{ep.term // 12} г. {ep.term % 12} мес.' if ep and ep.term and ep.term // 12 and ep.term % 12 else f'{ep.term // 12} г.' if ep and ep.term and ep.term % 12 == 0 else f'{ep.term} мес.' if ep and ep.term else ''),
-                    ep.grad_date.strftime('%d.%m.%Y') if ep and ep.grad_date else '',
-                    et.name_organization if et else '', et.agreement if et else '', et.abilimpiks if et else ''
-                ])
-
-            if 'employment' in export_sections:
-                em = getattr(student, 'employment', None)
-                row_data.extend([
-                    em.get_employment_status_display() if em else '',
-                    em.place_job if em else '',
-                    em.position if em else '',
-                    em.hiring_date.strftime('%d.%m.%Y') if em and em.hiring_date else '',
-                    em.get_reason_not_employment_display() if em else '',  # ИЗМЕНЕНО
-                    em.get_accounting_employment_display() if em else '',
-                    em.get_resume_status_display() if em else ''
-                ])
-
-            if 'parents' in export_sections:
-                parents_list = []
-                for parent in student.parents.all():
-                    p_info = f"{parent.last_name or ''} {parent.first_name or ''} {parent.middle_name or ''}".strip()
-                    p_contacts = f"Тел: {parent.phone or '-'}, Email: {parent.email or '-'}"
-                    parents_list.append(f"{p_info} ({p_contacts})")
-                row_data.append("\n".join(parents_list) if parents_list else "Нет данных")
-
-            ws.append(row_data)
-
-            # Стилизация строк данных
+            ws.append([value for code in sections for value in EXPORT_SECTIONS[code][1](student)])
             ws.row_dimensions[row_num].height = 22
             for cell in ws[row_num]:
-                cell.border = thin_border
-                cell.alignment = align_left if cell.column != 1 else align_center
+                cell.border = cell_border
+                cell.alignment = align_center if cell.column == 1 else align_left
 
-        # Авто-выравнивание ширины колонок под контент
-        for col in ws.columns:
-            max_len = max(len(str(cell.value or '')) for cell in col)
-            col_letter = openpyxl.utils.get_column_letter(col[0].column)
-            ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+        # Ширина колонок по содержимому
+        for column in ws.columns:
+            longest = max(len(str(cell.value or '')) for cell in column)
+            ws.column_dimensions[get_column_letter(column[0].column)].width = max(longest + 3, 12)
 
-        # 6. Подготовка HTTP-ответа для скачивания файла
         response = HttpResponse(
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         )
