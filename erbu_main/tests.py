@@ -113,6 +113,12 @@ class StudentAccessViewsTest(TestCase):
         _, last_names = self.export_rows(self.teacher_user, institutions=[self.inst_2.pk])
         self.assertEqual(last_names, ["Первый"])
 
+    def test_export_of_institution_without_students_redirects_with_message(self):
+        empty = EducationInstitution.objects.create(name="Колледж №3")
+        self.client.force_login(self.admin_user)
+        response = self.client.post(reverse('student_export_excel'), {'institutions': [empty.pk]}, secure=True)
+        self.assertRedirects(response, reverse('students'), fetch_redirect_response=False)
+
     def test_base_section_is_always_exported(self):
         header, _ = self.export_rows(self.admin_user, sections=["passport"])
         self.assertEqual(header[0], "ID")

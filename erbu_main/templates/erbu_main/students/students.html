@@ -3,6 +3,27 @@
 {% block title %}Студенты - Журнал {% endblock %}
 
 {% block content %}
+    <style>
+        /* Окно экспорта в Excel. Стили здесь, чтобы окно не зависело от кеша/сборки внешних CSS */
+        .btn-export { background: var(--color-success); border-color: var(--color-success); color: #fff; margin-left: 10px; }
+        .btn-export:hover { background: var(--color-success); color: #fff; filter: brightness(0.92); }
+
+        .export-modal { display: flex; flex-direction: column; max-width: 460px; max-height: calc(100vh - 40px); }
+        .export-form { display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0; }
+        .export-body { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
+        .export-fieldset { border: none; padding: 0; margin: 0 0 14px; min-width: 0; }
+        .export-fieldset legend { padding: 0; margin-bottom: 6px; font-size: 0.75rem; font-weight: 600;
+            color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+        .export-checkbox { display: flex; align-items: center; gap: 8px; padding: 3px 0; margin: 0;
+            font-size: 0.875rem; font-weight: 400; color: var(--color-text); cursor: pointer; }
+        .export-checkbox input { flex: none; width: auto; max-width: none; margin: 0; padding: 0; }
+        .export-institutions { max-height: 150px; overflow-y: auto; margin: 4px 0; padding: 2px 10px;
+            border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-alt); }
+        .export-hint { margin: 4px 0 0; font-size: 0.8125rem; color: var(--color-text-subtle); }
+        .export-actions { flex: none; display: flex; justify-content: flex-end; gap: 10px;
+            padding-top: 12px; border-top: 1px solid var(--color-border); }
+        .export-actions button { margin: 0; }
+    </style>
     <div class="page-header">
         <div class="header-content">
             <div>
@@ -36,14 +57,14 @@
         </div>
     </div>
 
-    <div id="exportModal" class="custom-modal" hidden>
+    <div id="exportModal" class="custom-modal" style="display: none;">
         <div class="modal-content export-modal">
             <button type="button" class="close-modal" id="closeExportModalBtn" aria-label="Закрыть">&times;</button>
             <h3 class="modal-title">Настройка экспорта в Excel</h3>
 
-            <form action="{% url 'student_export_excel' %}" method="POST" id="exportForm">
+            <form action="{% url 'student_export_excel' %}" method="POST" id="exportForm" class="export-form">
                 {% csrf_token %}
-
+                <div class="export-body">
                 {% if export_institutions %}
                     <fieldset class="export-fieldset">
                         <legend>Учебные заведения</legend>
@@ -83,6 +104,7 @@
                         <input type="checkbox" name="sections" value="parents"> Сведения о родителях
                     </label>
                 </fieldset>
+                </div>
 
                 <div class="export-actions">
                     <button type="button" class="btn-secondary" id="cancelExportBtn">Отмена</button>
@@ -206,8 +228,8 @@
             const openBtn = document.getElementById('openExportModalBtn');
             if (!modal || !openBtn) return;
 
-            const closeModal = () => { modal.hidden = true; };
-            openBtn.addEventListener('click', () => { modal.hidden = false; });
+            const closeModal = () => { modal.style.display = 'none'; };
+            openBtn.addEventListener('click', () => { modal.style.display = 'flex'; });
             document.getElementById('closeExportModalBtn').addEventListener('click', closeModal);
             document.getElementById('cancelExportBtn').addEventListener('click', closeModal);
             modal.addEventListener('click', event => { if (event.target === modal) closeModal(); });

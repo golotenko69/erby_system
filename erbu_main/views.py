@@ -766,6 +766,10 @@ class ExportStudentsExcelView(TeacherRequiredMixin, View):
             'education_process__education_institution__name', 'last_name', 'first_name'
         )
 
+        if not queryset.exists():
+            messages.warning(request, 'По выбранным учебным заведениям студентов не найдено, отчёт не сформирован.')
+            return redirect('students')
+
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = 'Студенты'

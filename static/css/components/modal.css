@@ -104,8 +104,3 @@
     gap: 6px;
     margin-bottom: 16px;
 }
-
-/* Атрибут hidden должен скрывать окно, несмотря на display: flex выше */
-.custom-modal[hidden] {
-    display: none;
-}
