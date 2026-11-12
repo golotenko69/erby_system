@@ -1,16 +1,14 @@
-import random
-import string
-
 import openpyxl
 from django.contrib import messages
 from django.contrib.auth import get_user_model
-from django.core.exceptions import PermissionDenied
-from django.db.models import Q
+from django.db import transaction
+from django.db.models import Count, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import View
+from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -20,26 +18,11 @@ from erbu_main.forms import (
     EducationTargetForm, EmploymentForm, MseForm, ParentFormSet, PassportForm, PmpkForm, StudentForm,
 )
 from erbu_main.mixins import AdminRequiredMixin, TeacherRequiredMixin
-from erbu_main.models import DisabilityInfo, EducationInstitution, EducationProcess, Student, StudentLog
+from erbu_main.models import EducationInstitution, EducationProcess, Student, StudentLog
+from erbu_main.utils import format_term, generate_random_string, generate_unique_username
 from users.forms import CustomUserCreationForm
 
 User = get_user_model()
-
-
-def generate_random_string(length=8):
-    """Случайная строка из букв и цифр (логины и пароли ответственных лиц)."""
-    alphabet = string.ascii_letters + string.digits
-    return ''.join(random.choice(alphabet) for _ in range(length))
-
-
-def format_term(months):
-    """Срок обучения в месяцах -> «1 г. 10 мес.» / «2 г.» / «10 мес.»."""
-    if not months:
-        return ''
-    years, rest = divmod(months, 12)
-    if years and rest:
-        return f'{years} г. {rest} мес.'
-    return f'{years} г.' if years else f'{rest} мес.'
 
 
 def students_for_user(user):
@@ -47,19 +30,32 @@ def students_for_user(user):
     role = getattr(user, 'role', None)
     if role == 'ADMIN':
         return Student.objects.all()
-    if role == 'TEACHER':
+    if role == 'TEACHER' and user.education_institution_id:
         return Student.objects.filter(
-            education_process__education_institution=user.education_institution
-        ).distinct()
+            education_process__education_institution_id=user.education_institution_id
+        )
     return Student.objects.none()
 
 
+def log_student_action(user, action, student, changes=None):
+    """Запись в журнал изменений студентов (уведомления администратора)."""
+    institution = getattr(user, 'education_institution', None)
+    StudentLog.objects.create(
+        action=action,
+        student_name=f"{student.last_name or ''} {student.first_name} {student.middle_name or ''}".strip(),
+        user=user,
+        institution_name=institution.name if institution else "Администрация",
+        changes=changes,
+    )
+
+
+@require_POST
 def mark_logs_read(request):
     """Фоновая функция для сброса счётчика уведомлений."""
-    if request.method == 'POST' and request.user.is_authenticated and getattr(request.user, 'role', None) == 'ADMIN':
-        StudentLog.objects.filter(is_read=False).update(is_read=True)
-        return JsonResponse({'status': 'success'})
-    return JsonResponse({'status': 'error'}, status=400)
+    if getattr(request.user, 'role', None) != 'ADMIN':
+        return JsonResponse({'status': 'error'}, status=403)
+    StudentLog.objects.filter(is_read=False).update(is_read=True)
+    return JsonResponse({'status': 'success'})
 
 
 def index_view(request):
@@ -77,7 +73,11 @@ class StudentsListView(TeacherRequiredMixin, ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        return students_for_user(self.request.user)
+        return (
+            students_for_user(self.request.user)
+            .select_related('disability_info')
+            .order_by('last_name', 'first_name', 'pk')
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -87,116 +87,121 @@ class StudentsListView(TeacherRequiredMixin, ListView):
         return context
 
 
-class StudentCreateView(TeacherRequiredMixin, CreateView):
+class StudentFormsMixin:
+    """Общая логика создания/редактирования студента со всеми вложенными формами."""
+
+    FORM_CLASSES = {
+        'passport_form': (PassportForm, 'passport'),
+        'disability_form': (DisabilityForm, 'disability'),
+        'mse_form': (MseForm, 'mse'),
+        'pmpk_form': (PmpkForm, 'pmpk'),
+        'edu_end_form': (EducationEndedForm, 'edu_end'),
+        'edu_proc_form': (EducationProcessForm, 'edu_proc'),
+        'edu_tar_form': (EducationTargetForm, 'edu_tar'),
+        'employment_form': (EmploymentForm, 'employment'),
+    }
+
+    def get_related_instances(self, student):
+        """Существующие связанные объекты студента (None — если их ещё нет)."""
+        if student is None or student.pk is None:
+            return {}
+        disability = getattr(student, 'disability_info', None)
+        return {
+            'passport_form': getattr(student, 'passport', None),
+            'disability_form': disability,
+            'mse_form': getattr(disability, 'mse', None) if disability else None,
+            'pmpk_form': getattr(disability, 'pmpk', None) if disability else None,
+            'edu_end_form': getattr(student, 'education_ended', None),
+            'edu_proc_form': getattr(student, 'education_process', None),
+            'edu_tar_form': getattr(student, 'education_target', None),
+            'employment_form': getattr(student, 'employment', None),
+        }
+
+    def build_related_forms(self, student=None):
+        data = self.request.POST if self.request.method == 'POST' else None
+        instances = self.get_related_instances(student)
+        forms = {}
+        for name, (form_class, prefix) in self.FORM_CLASSES.items():
+            kwargs = {'prefix': prefix, 'instance': instances.get(name)}
+            if form_class is EducationProcessForm:
+                kwargs['user'] = self.request.user
+            forms[name] = form_class(data, **kwargs)
+        forms['parent_formset'] = ParentFormSet(
+            data, instance=student if student is not None else Student(), prefix='parent'
+        )
+        return forms
+
+    def get_context_data(self, **kwargs):
+        related_forms = kwargs.pop('related_forms', None)
+        context = super().get_context_data(**kwargs)
+        if related_forms is None:
+            related_forms = self.build_related_forms(getattr(self, 'object', None))
+        context.update(related_forms)
+        return context
+
+    @staticmethod
+    def all_valid(form, related_forms):
+        # Валидируем все формы (без короткого замыкания), чтобы показать все ошибки сразу
+        results = [form.is_valid()] + [f.is_valid() for f in related_forms.values()]
+        return all(results)
+
+    def save_related(self, student, forms):
+        """Сохраняет все связанные с студентом объекты."""
+        for name in ('passport_form', 'edu_end_form', 'edu_tar_form', 'employment_form'):
+            obj = forms[name].save(commit=False)
+            obj.student = student
+            obj.save()
+
+        education_process = forms['edu_proc_form'].save(commit=False)
+        education_process.student = student
+        if self.request.user.role == 'TEACHER':
+            # Ответственное лицо может добавлять студентов только в своё учреждение
+            education_process.education_institution = self.request.user.education_institution
+        education_process.save()
+
+        disability_form = forms['disability_form']
+        disability = disability_form.save(commit=False)
+        disability.student = student
+        disability.save()
+
+        # МСЭ хранится только при наличии инвалидности, ПМПК — только при статусе ОВЗ
+        for form_name, flag_field, related in (
+            ('mse_form', 'has_disability', 'mse'),
+            ('pmpk_form', 'status_ovz', 'pmpk'),
+        ):
+            if disability_form.cleaned_data.get(flag_field) == 'Да':
+                obj = forms[form_name].save(commit=False)
+                obj.disability = disability
+                obj.save()
+            elif forms[form_name].instance.pk:
+                forms[form_name].instance.delete()
+
+        parent_formset = forms['parent_formset']
+        parent_formset.instance = student
+        parent_formset.save()
+
+
+class StudentCreateView(TeacherRequiredMixin, StudentFormsMixin, CreateView):
     model = Student
     form_class = StudentForm
     template_name = 'erbu_main/students/students_form.html'
-    success_url = reverse_lazy('students')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+    def post(self, request, *args, **kwargs):
+        self.object = None
+        form = self.get_form()
+        related_forms = self.build_related_forms()
 
-        if self.request.POST:
-            context['passport_form'] = PassportForm(self.request.POST, prefix='passport')
-            context['disability_form'] = DisabilityForm(self.request.POST, prefix='disability')
-            context['mse_form'] = MseForm(self.request.POST, prefix='mse')
-            context['pmpk_form'] = PmpkForm(self.request.POST, prefix='pmpk')
-            context['parent_formset'] = ParentFormSet(self.request.POST, prefix='parent')
-            context['edu_end_form'] = EducationEndedForm(self.request.POST, prefix='edu_end')
-            context['edu_proc_form'] = EducationProcessForm(self.request.POST, user=self.request.user, prefix='edu_proc')
-            context['edu_tar_form'] = EducationTargetForm(self.request.POST, prefix='edu_tar')
-            context['employment_form'] = EmploymentForm(self.request.POST, prefix='employment')
-        else:
-            context['passport_form'] = PassportForm(prefix='passport')
-            context['disability_form'] = DisabilityForm(prefix='disability')
-            context['mse_form'] = MseForm(prefix='mse')
-            context['pmpk_form'] = PmpkForm(prefix='pmpk')
-            context['parent_formset'] = ParentFormSet(prefix='parent')
-            context['edu_end_form'] = EducationEndedForm(prefix='edu_end')
-            context['edu_proc_form'] = EducationProcessForm(user=self.request.user, prefix='edu_proc')
-            context['edu_tar_form'] = EducationTargetForm(prefix='edu_tar')
-            context['employment_form'] = EmploymentForm(prefix='employment')
+        if not self.all_valid(form, related_forms):
+            return self.render_to_response(self.get_context_data(form=form, related_forms=related_forms))
 
-        return context
-
-    def form_valid(self, form):
-        context = self.get_context_data()
-
-        passport_form = context['passport_form']
-        disability_form = context['disability_form']
-        mse_form = context['mse_form']
-        pmpk_form = context['pmpk_form']
-        parent_formset = context['parent_formset']
-        edu_end_form = context['edu_end_form']
-        edu_proc_form = context['edu_proc_form']
-        edu_tar_form = context['edu_tar_form']
-        employment_form = context['employment_form']
-
-        forms_valid = (
-                form.is_valid() and passport_form.is_valid() and
-                disability_form.is_valid() and mse_form.is_valid() and
-                pmpk_form.is_valid() and parent_formset.is_valid() and
-                edu_end_form.is_valid() and edu_proc_form.is_valid() and
-                edu_tar_form.is_valid() and employment_form.is_valid()
-        )
-
-        if forms_valid:
+        with transaction.atomic():
             student = form.save()
+            self.save_related(student, related_forms)
+            log_student_action(request.user, 'CREATE', student)
 
-            passport = passport_form.save(commit=False)
-            passport.student = student
-            passport.save()
+        messages.success(request, f"Студент '{student.first_name} {student.last_name}' успешно создан!")
+        return redirect('student_detail', student_id=student.pk)
 
-            disability = disability_form.save(commit=False)
-            disability.student = student
-            disability.save()
-
-            # Сохраняем МСЭ только если указана Инвалидность
-            if disability_form.cleaned_data.get('has_disability') == 'Да':
-                mse = mse_form.save(commit=False)
-                mse.disability = disability
-                mse.save()
-
-            # Сохраняем ПМПК только если указан статус ОВЗ = Да
-            if disability_form.cleaned_data.get('status_ovz') == 'Да':
-                pmpk = pmpk_form.save(commit=False)
-                pmpk.disability = disability
-                pmpk.save()
-
-            education_ended = edu_end_form.save(commit=False)
-            education_ended.student = student
-            education_ended.save()
-
-            education_process = edu_proc_form.save(commit=False)
-            education_process.student = student
-
-            if self.request.user.role == 'TEACHER':
-                education_process.education_institution = self.request.user.education_institution
-            education_process.save()
-
-            education_target = edu_tar_form.save(commit=False)
-            education_target.student = student
-            education_target.save()
-
-            employment = employment_form.save(commit=False)
-            employment.student = student
-            employment.save()
-
-            parent_formset.instance = student
-            parent_formset.save()
-
-            user_institution = getattr(self.request.user, 'education_institution', None)
-            StudentLog.objects.create(
-                action='CREATE',
-                student_name=f"{student.last_name} {student.first_name} {student.middle_name or ''}".strip(),
-                user=self.request.user,
-                institution_name=user_institution.name if user_institution else "Администрация"
-            )
-
-            messages.success(self.request, f"Студент '{student.first_name} {student.last_name}' успешно создан!")
-            return redirect('student_detail', student_id=student.pk)
-
-        return self.render_to_response(self.get_context_data(form=form))
 
 class StudentDeleteView(TeacherRequiredMixin, DeleteView):
     model = Student
@@ -204,20 +209,18 @@ class StudentDeleteView(TeacherRequiredMixin, DeleteView):
     success_url = reverse_lazy('students')
     pk_url_kwarg = 'student_id'
 
-    def post(self, request, *args, **kwargs):
-        obj = self.get_object()
+    def get_queryset(self):
+        # Ответственное лицо может удалять только студентов своего учреждения
+        return students_for_user(self.request.user)
 
-        # ЛОГИРОВАНИЕ УДАЛЕНИЯ
-        user_institution = getattr(self.request.user, 'education_institution', None)
-        StudentLog.objects.create(
-            action='DELETE',
-            student_name=f"{obj.last_name} {obj.first_name} {obj.middle_name or ''}".strip(),
-            user=self.request.user,
-            institution_name=user_institution.name if user_institution else "Администрация"
-        )
+    def form_valid(self, form):
+        student = self.object
+        with transaction.atomic():
+            log_student_action(self.request.user, 'DELETE', student)
+            response = super().form_valid(form)
+        messages.success(self.request, f"Студент '{student.first_name} {student.last_name}' успешно удален!")
+        return response
 
-        messages.success(self.request, f"Студент '{obj.first_name} {obj.last_name}' успешно удален!")
-        return super().delete(request, *args, **kwargs)
 
 class StudentDetailView(TeacherRequiredMixin, DetailView):
     model = Student
@@ -225,52 +228,40 @@ class StudentDetailView(TeacherRequiredMixin, DetailView):
     context_object_name = 'student'
     pk_url_kwarg = 'student_id'
 
+    def get_queryset(self):
+        # Ответственное лицо видит только студентов своего учреждения
+        return students_for_user(self.request.user).select_related(
+            'passport', 'disability_info', 'disability_info__mse', 'disability_info__pmpk',
+            'education_ended', 'education_process', 'education_process__education_institution',
+            'education_target', 'employment',
+        )
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         student = self.object
 
-        # Паспорт
+        disability = getattr(student, 'disability_info', None)
         context['passport'] = getattr(student, 'passport', None)
+        context['disability'] = disability
+        context['mse'] = getattr(disability, 'mse', None) if disability else None
+        context['pmpk'] = getattr(disability, 'pmpk', None) if disability else None
 
-        # Инвалидность и связанные данные
-        try:
-            disability = student.disability_info
-            context['disability'] = disability
-            context['mse'] = getattr(disability, 'mse', None)
-            context['pmpk'] = getattr(disability, 'pmpk', None)
-        except DisabilityInfo.DoesNotExist:
-            context['disability'] = None
-            context['mse'] = None
-            context['pmpk'] = None
-
-        # Образование
+        education_process = getattr(student, 'education_process', None)
+        if education_process and education_process.term:
+            education_process.term_display = format_term(education_process.term)
         context['education_ended'] = getattr(student, 'education_ended', None)
-        context['education_process'] = getattr(student, 'education_process', None)
-        if context['education_process'] and context['education_process'].term:
-            context['education_process'].term_display = format_term(context['education_process'].term)
+        context['education_process'] = education_process
         context['education_target'] = getattr(student, 'education_target', None)
-        # Родители
         context['parents'] = student.parents.all()
-
-        # Трудоустройство
         context['employment'] = getattr(student, 'employment', None)
-
         return context
 
-    def get_queryset(self):
-        user = self.request.user
 
-        if user.role == 'ADMIN':
-            return Student.objects.all()
-
-        return Student.objects.filter(
-            Q(education_process__education_institution=user.education_institution) |
-            Q(pk=self.kwargs.get('student_id'))
-        ).distinct()
-
-class SignUpView(CreateView):
+class SignUpView(AdminRequiredMixin, CreateView):
+    """Создание учётной записи. Доступно только администратору:
+    форма позволяет выбрать роль, в том числе «Администратор»."""
     form_class = CustomUserCreationForm
-    success_url = reverse_lazy('login')
+    success_url = reverse_lazy('index')
     template_name = 'registration/signup.html'
 
 
@@ -282,42 +273,35 @@ class EducationInstitutionListView(AdminRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        return EducationInstitution.objects.all().order_by('name')
+        today_start = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
+        return EducationInstitution.objects.annotate(
+            student_count=Count('students__student', distinct=True),
+            students_added_today=Count(
+                'students__student', filter=Q(students__created_at__gte=today_start), distinct=True
+            ),
+        ).order_by('name')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        user = self.request.user
+        context['is_admin'] = True  # представление доступно только администратору
 
-        # Передаем роль в контекст, чтобы делать проверки в шаблоне
-        context['is_admin'] = getattr(user, 'role', None) == 'ADMIN'
+        institutions = list(context['institutions'])
+        teachers = {}
+        for teacher in User.objects.filter(
+            education_institution__in=institutions, role='TEACHER'
+        ).order_by('pk'):
+            teachers.setdefault(teacher.education_institution_id, teacher)
 
-        now = timezone.now()
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-
-        for institution in context['institutions']:
-            institution.teacher = User.objects.filter(
-                education_institution=institution,
-                role='TEACHER'
-            ).first()
-
-        for institution in context['institutions']:
-            # Базовый запрос процессов обучения для этого учреждения
-            edu_processes = EducationProcess.objects.filter(education_institution=institution)
-
-            # 1. Общее количество уникальных студентов
-            institution.student_count = edu_processes.values('student').distinct().count()
-
-            # Данные, доступные только для администратора
-            if context['is_admin']:
-                # 2. Сколько студентов добавлено за сегодня
-                institution.students_added_today = edu_processes.filter(
-                    created_at__gte=today_start
-                ).values('student').distinct().count()
-
-                # 3. Последние добавленные студенты (например, последние 3) для вывода времени
-                institution.recent_additions = edu_processes.select_related('student').order_by('-created_at')[:3]
-
+        for institution in institutions:
+            institution.teacher = teachers.get(institution.pk)
+            # Последние добавленные студенты для вывода времени
+            institution.recent_additions = (
+                EducationProcess.objects.filter(education_institution=institution)
+                .select_related('student').order_by('-created_at')[:3]
+            )
+        context['institutions'] = institutions
         return context
+
 
 class EducationInstitutionDetailView(AdminRequiredMixin, DetailView):
     """Детальная информация об учебном заведении"""
@@ -333,7 +317,7 @@ class EducationInstitutionDetailView(AdminRequiredMixin, DetailView):
         context['responsible_teacher'] = User.objects.filter(
             education_institution=institution,
             role='TEACHER'
-        ).first()
+        ).order_by('pk').first()
 
         # Получаем всех студентов, обучающихся в этом учреждении
         education_processes = EducationProcess.objects.filter(
@@ -341,10 +325,7 @@ class EducationInstitutionDetailView(AdminRequiredMixin, DetailView):
         ).select_related('student').order_by('student__last_name', 'student__first_name')
 
         # Группируем по курсам
-        students_by_course = {
-            1: [], 2: [], 3: [], 4: []
-        }
-
+        students_by_course = {1: [], 2: [], 3: [], 4: []}
         for edu in education_processes:
             if edu.course in students_by_course:
                 students_by_course[edu.course].append({
@@ -356,8 +337,10 @@ class EducationInstitutionDetailView(AdminRequiredMixin, DetailView):
 
         context['students_by_course'] = students_by_course
         context['total_students'] = education_processes.values('student').distinct().count()
-        context['professions'] = education_processes.values_list('profession', flat=True).distinct()
-
+        context['professions'] = (
+            education_processes.exclude(profession__isnull=True).exclude(profession='')
+            .order_by('profession').values_list('profession', flat=True).distinct()
+        )
         return context
 
 
@@ -366,36 +349,57 @@ class EducationInstitutionCreateView(AdminRequiredMixin, CreateView):
     model = EducationInstitution
     form_class = EducationInstitutionForm
     template_name = 'erbu_main/educations/institution_form.html'
-    success_url = reverse_lazy('institutions')
+
+    def get_success_url(self):
+        return reverse_lazy('institution_detail', kwargs={'institution_id': self.object.pk})
 
     def form_valid(self, form):
-        # Сохраняем само учебное заведение
-        response = super().form_valid(form)
-        institution = self.object
+        username = generate_unique_username()
+        password = generate_random_string(12)
 
-        # Генерируем уникальный логин и пароль
-        username = f"user_{generate_random_string(6).lower()}"
-        password = generate_random_string(10)
+        with transaction.atomic():
+            response = super().form_valid(form)
+            User.objects.create_user(
+                username=username,
+                password=password,
+                first_name=form.cleaned_data['teacher_first_name'],
+                last_name=form.cleaned_data['teacher_last_name'],
+                middle_name=form.cleaned_data.get('teacher_middle_name', ''),
+                email=form.cleaned_data['teacher_email'],
+                phone=form.cleaned_data['teacher_phone'],
+                role='TEACHER',
+                education_institution=self.object,
+            )
 
-        # Создаем связанного пользователя (учителя)
-        User.objects.create_user(
-            username=username,
-            password=password,
-            first_name=form.cleaned_data['teacher_first_name'],
-            last_name=form.cleaned_data['teacher_last_name'],
-            middle_name=form.cleaned_data.get('teacher_middle_name', ''),
-            email=form.cleaned_data['teacher_email'],
-            phone=form.cleaned_data['teacher_phone'],
-            role='TEACHER',
-            education_institution=institution,
-            raw_password=password  # Сохраняем пароль, чтобы показать его админу
-        )
-
+        # Пароль не хранится в открытом виде — показываем его администратору один раз
         messages.success(
             self.request,
-            f"Учреждение '{institution.name}' и ответственный успешно созданы!"
+            f"Учреждение '{self.object.name}' и ответственный успешно созданы. "
+            f"Логин: {username}, пароль: {password}. Сохраните пароль — повторно он показан не будет."
         )
         return response
+
+
+class ResetTeacherPasswordView(AdminRequiredMixin, View):
+    """Генерирует новый пароль ответственного лица и показывает его администратору один раз."""
+
+    def post(self, request, institution_id):
+        institution = get_object_or_404(EducationInstitution, pk=institution_id)
+        teacher = User.objects.filter(
+            education_institution=institution, role='TEACHER'
+        ).order_by('pk').first()
+        if teacher is None:
+            messages.error(request, "У учреждения нет ответственного лица.")
+            return redirect('institution_detail', institution_id=institution.pk)
+
+        password = generate_random_string(12)
+        teacher.set_password(password)
+        teacher.save(update_fields=['password'])
+        messages.success(
+            request,
+            f"Новый пароль для {teacher.username}: {password}. Сохраните его — повторно он показан не будет."
+        )
+        return redirect('institution_detail', institution_id=institution.pk)
 
 
 class EducationInstitutionUpdateView(AdminRequiredMixin, UpdateView):
@@ -424,214 +428,110 @@ class EducationInstitutionDeleteView(AdminRequiredMixin, DeleteView):
     success_url = reverse_lazy('institutions')
     context_object_name = 'institution'
 
-    def dispatch(self, request, *args, **kwargs):
-        """Проверяем наличие студентов до выполнения любого (GET/POST) запроса"""
-        institution = self.get_object()
-        students_count = EducationProcess.objects.filter(
-            education_institution=institution
+    def students_count(self):
+        return EducationProcess.objects.filter(
+            education_institution=self.object
         ).values('student').distinct().count()
-
-        # Если это POST-запрос (попытка удалить) и студенты есть — блокируем
-        if request.method == 'POST' and students_count > 0:
-            messages.error(
-                request,
-                f"Ошибка! Невозможно удалить учреждение '{institution.name}', так как в нём обучается {students_count} студентов."
-            )
-            return redirect('institution_detail', institution_id=institution.pk)
-
-        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         """Передаем количество студентов в контекст шаблона для динамического UI"""
         context = super().get_context_data(**kwargs)
-        context['students_count'] = EducationProcess.objects.filter(
-            education_institution=self.object
-        ).values('student').distinct().count()
+        context['students_count'] = self.students_count()
         return context
 
-    def delete(self, request, *args, **kwargs):
-        """Вызывается, если проверка в dispatch пройдена успешно и студентов нет"""
-        institution = self.get_object()
+    def form_valid(self, form):
+        institution = self.object
+        students_count = self.students_count()
+        if students_count > 0:
+            messages.error(
+                self.request,
+                f"Ошибка! Невозможно удалить учреждение '{institution.name}', "
+                f"так как в нём обучается студентов: {students_count}."
+            )
+            return redirect('institution_detail', institution_id=institution.pk)
 
-        # Находим учителей этого заведения и деактивируем их, чтобы они не могли войти
-        teachers = User.objects.filter(education_institution=institution, role='TEACHER')
-        for teacher in teachers:
-            teacher.is_active = False
-            teacher.education_institution = None  # Стираем связь с удаленным учреждением
-            teacher.save()
+        with transaction.atomic():
+            # Блокируем учётные записи сотрудников, чтобы они не могли войти
+            User.objects.filter(education_institution=institution, role='TEACHER').update(
+                is_active=False, education_institution=None
+            )
+            response = super().form_valid(form)
 
         messages.success(
-            request,
+            self.request,
             f"Учебное заведение '{institution.name}' успешно удалено. Связанные аккаунты сотрудников заблокированы."
         )
-        return super().delete(request, *args, **kwargs)
+        return response
 
 
-class StudentFullEditView(UpdateView):
+class StudentFullEditView(TeacherRequiredMixin, StudentFormsMixin, UpdateView):
     model = Student
     form_class = StudentForm
     template_name = 'erbu_main/students/students_form.html'
     pk_url_kwarg = 'student_id'
 
-    def get_object(self, queryset=None):
-        obj = super().get_object(queryset)
-        if self.request.user.role == 'TEACHER':
-            student_institution = None
-            if hasattr(obj, 'education_process') and obj.education_process:
-                student_institution = obj.education_process.education_institution
+    FIELD_LABELS = {
+        'status': 'Статус', 'phone': 'Телефон', 'email': 'Email',
+        'education_type': 'Тип оконч. образования', 'education_document': 'Документ оконч. образования',
+        'agreement': 'Целевой договор', 'abilimpiks': 'Участие в Абилимпикс',
+        'employment_status': 'Трудоустроен', 'accounting_employment': 'Состоит в ЦЗН',
+        'resume_status': 'Резюме создано'
+    }
 
-            if student_institution != self.request.user.education_institution:
-                raise PermissionDenied("Нет доступа")
-        return obj
+    def get_queryset(self):
+        # Ответственное лицо может редактировать только студентов своего учреждения
+        return students_for_user(self.request.user)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        student = self.object if self.object.pk else None
+    def collect_changes(self, form, related_forms):
+        """Описание изменений ключевых полей для журнала (сравниваем с данными из БД)."""
+        old_student = Student.objects.get(pk=self.object.pk)
+        old_related = self.get_related_instances(old_student)
+        changes = []
 
-        disability = getattr(student, 'disability_info', None)
-        mse_instance = disability.mse if disability and hasattr(disability, 'mse') else None
-        pmpk_instance = disability.pmpk if disability and hasattr(disability, 'pmpk') else None
+        def check(form_obj, old_obj, fields):
+            if old_obj is None:
+                return
+            for field in fields:
+                if field not in form_obj.cleaned_data:
+                    continue
+                new_val = form_obj.cleaned_data[field]
+                old_val = getattr(old_obj, field, None)
+                choices = getattr(form_obj.fields[field], 'choices', None)
+                if choices and new_val:
+                    new_val = dict(choices).get(new_val, new_val)
+                if hasattr(old_obj, f'get_{field}_display'):
+                    old_val = getattr(old_obj, f'get_{field}_display')()
+                if str(old_val or '') != str(new_val or ''):
+                    label = self.FIELD_LABELS.get(field, field)
+                    changes.append(f"• {label}: «{old_val or 'нет'}» ➔ «{new_val or 'нет'}»")
 
-        if self.request.POST:
-            context['passport_form'] = PassportForm(self.request.POST, instance=getattr(student, 'passport', None),
-                                                    prefix='passport')
-            context['disability_form'] = DisabilityForm(self.request.POST, instance=disability, prefix='disability')
-            context['mse_form'] = MseForm(self.request.POST, instance=mse_instance, prefix='mse')
-            context['pmpk_form'] = PmpkForm(self.request.POST, instance=pmpk_instance, prefix='pmpk')
-            context['parent_formset'] = ParentFormSet(self.request.POST, instance=student, prefix='parent')
-            context['edu_end_form'] = EducationEndedForm(self.request.POST,
-                                                         instance=getattr(student, 'education_ended', None),
-                                                         prefix='edu_end')
-            context['edu_proc_form'] = EducationProcessForm(self.request.POST,
-                                                            instance=getattr(student, 'education_process', None),
-                                                            user=self.request.user, prefix='edu_proc')
-            context['edu_tar_form'] = EducationTargetForm(self.request.POST,
-                                                          instance=getattr(student, 'education_target', None),
-                                                          prefix='edu_tar')
-            context['employment_form'] = EmploymentForm(self.request.POST,
-                                                        instance=getattr(student, 'employment', None),
-                                                        prefix='employment')
-        else:
-            context['passport_form'] = PassportForm(instance=getattr(student, 'passport', None), prefix='passport')
-            context['disability_form'] = DisabilityForm(instance=disability, prefix='disability')
-            context['mse_form'] = MseForm(instance=mse_instance, prefix='mse')
-            context['pmpk_form'] = PmpkForm(instance=pmpk_instance, prefix='pmpk')
-            context['parent_formset'] = ParentFormSet(instance=student, prefix='parent')
-            context['edu_end_form'] = EducationEndedForm(instance=getattr(student, 'education_ended', None),
-                                                         prefix='edu_end')
-            context['edu_proc_form'] = EducationProcessForm(instance=getattr(student, 'education_process', None),
-                                                            user=self.request.user, prefix='edu_proc')
-            context['edu_tar_form'] = EducationTargetForm(instance=getattr(student, 'education_target', None),
-                                                          prefix='edu_tar')
-            context['employment_form'] = EmploymentForm(instance=getattr(student, 'employment', None),
-                                                        prefix='employment')
+        check(form, old_student, ['status', 'phone', 'email'])
+        check(related_forms['edu_end_form'], old_related.get('edu_end_form'), ['education_type', 'education_document'])
+        check(related_forms['edu_tar_form'], old_related.get('edu_tar_form'), ['agreement', 'abilimpiks'])
+        check(related_forms['employment_form'], old_related.get('employment_form'),
+              ['employment_status', 'accounting_employment', 'resume_status'])
+        return changes
 
-        return context
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        related_forms = self.build_related_forms(self.object)
 
-    def form_valid(self, form):
-        context = self.get_context_data()
+        if not self.all_valid(form, related_forms):
+            return self.render_to_response(self.get_context_data(form=form, related_forms=related_forms))
 
-        passport_form = context['passport_form']
-        disability_form = context['disability_form']
-        mse_form = context['mse_form']
-        pmpk_form = context['pmpk_form']
-        parent_formset = context['parent_formset']
-        edu_end_form = context['edu_end_form']
-        edu_proc_form = context['edu_proc_form']
-        edu_tar_form = context['edu_tar_form']
-        employment_form = context['employment_form']
-
-        forms_valid = (
-                form.is_valid() and passport_form.is_valid() and
-                disability_form.is_valid() and mse_form.is_valid() and
-                pmpk_form.is_valid() and parent_formset.is_valid() and
-                edu_end_form.is_valid() and edu_proc_form.is_valid() and
-                edu_tar_form.is_valid() and employment_form.is_valid()
-        )
-
-        if forms_valid:
-            old_student = Student.objects.get(pk=self.object.pk)
-            changes_list = []
-
-            field_labels = {
-                'status': 'Статус', 'phone': 'Телефон', 'email': 'Email',
-                'education_type': 'Тип оконч. образования', 'education_document': 'Документ оконч. образования',
-                'agreement': 'Целевой договор', 'abilimpiks': 'Участие в Абилимпикс',
-                'employment_status': 'Трудоустроен', 'accounting_employment': 'Состоит в ЦЗН',
-                'resume_status': 'Резюме создано'
-            }
-
-            def check_changes(form_obj, old_obj, fields):
-                for field in fields:
-                    if field in form_obj.cleaned_data:
-                        new_val = form_obj.cleaned_data[field]
-                        old_val = getattr(old_obj, field, None)
-
-                        if hasattr(form_obj.fields[field], 'choices') and new_val:
-                            new_val = dict(form_obj.fields[field].choices).get(new_val, new_val)
-                        if old_obj and hasattr(old_obj, f'get_{field}_display'):
-                            old_val = getattr(old_obj, f'get_{field}_display')()
-
-                        if str(old_val) != str(new_val) and (old_val or new_val):
-                            label = field_labels.get(field, field)
-                            changes_list.append(f"• {label}: «{old_val or 'нет'}» ➔ «{new_val or 'нет'}»")
-
-            check_changes(form, old_student, ['status', 'phone', 'email'])
-
-            if hasattr(old_student, 'education_ended'):
-                check_changes(edu_end_form, old_student.education_ended, ['education_type', 'education_document'])
-            if hasattr(old_student, 'education_target'):
-                check_changes(edu_tar_form, old_student.education_target, ['agreement', 'abilimpiks'])
-            if hasattr(old_student, 'employment'):
-                check_changes(employment_form, old_student.employment,
-                              ['employment_status', 'accounting_employment', 'resume_status'])
-
+        changes = self.collect_changes(form, related_forms)
+        with transaction.atomic():
             student = form.save()
-            passport_form.save()
-
-            disability = disability_form.save(commit=False)
-            disability.student = student
-            disability.save()
-
-            # Обновление или удаление МСЭ
-            if disability_form.cleaned_data.get('has_disability') == 'Да':
-                mse = mse_form.save(commit=False)
-                mse.disability = disability
-                mse.save()
-            else:
-                if hasattr(disability, 'mse'):
-                    disability.mse.delete()
-
-            # Обновление или удаление ПМПК
-            if disability_form.cleaned_data.get('status_ovz') == 'Да':
-                pmpk = pmpk_form.save(commit=False)
-                pmpk.disability = disability
-                pmpk.save()
-            else:
-                if hasattr(disability, 'pmpk'):
-                    disability.pmpk.delete()
-
-            edu_end_form.save()
-            edu_proc_form.save()
-            edu_tar_form.save()
-            employment_form.save()
-            parent_formset.save()
-
-            changes_text = "\n".join(changes_list) if changes_list else "Существенных изменений в ключевых полях нет."
-
-            user_institution = getattr(self.request.user, 'education_institution', None)
-            StudentLog.objects.create(
-                action='UPDATE',
-                student_name=f"{student.last_name} {student.first_name} {student.middle_name or ''}".strip(),
-                user=self.request.user,
-                institution_name=user_institution.name if user_institution else "Администрация",
-                changes=changes_text
+            self.save_related(student, related_forms)
+            log_student_action(
+                request.user, 'UPDATE', student,
+                changes="\n".join(changes) if changes else "Существенных изменений в ключевых полях нет.",
             )
 
-            messages.success(self.request, "Студент успешно сохранен")
-            return redirect('student_detail', student_id=student.pk)
+        messages.success(request, "Студент успешно сохранен")
+        return redirect('student_detail', student_id=student.pk)
 
-        return self.render_to_response(self.get_context_data(form=form))
 
 def _date(value):
     return value.strftime('%d.%m.%Y') if value else ''
@@ -753,7 +653,7 @@ class ExportStudentsExcelView(TeacherRequiredMixin, View):
         sections = [code for code in EXPORT_SECTIONS if code == 'base' or code in requested]
 
         queryset = students_for_user(request.user)
-        if request.user.role == 'ADMIN':
+        if getattr(request.user, 'role', None) == 'ADMIN':
             institution_ids = [int(pk) for pk in request.POST.getlist('institutions') if pk.isdigit()]
             if institution_ids:
                 queryset = queryset.filter(education_process__education_institution__in=institution_ids)
@@ -810,17 +710,17 @@ class ExportStudentsExcelView(TeacherRequiredMixin, View):
 
 class LogDetailJsonView(View):
     def get(self, request, log_id, *args, **kwargs):
-        if not request.user.is_authenticated or getattr(request.user, 'role', None) != 'ADMIN':
+        if getattr(request.user, 'role', None) != 'ADMIN':
             return JsonResponse({'error': 'Доступ запрещен'}, status=403)
 
-        log_item = get_object_or_404(StudentLog, pk=log_id)
+        log_item = get_object_or_404(StudentLog.objects.select_related('user'), pk=log_id)
 
         data = {
             'action_display': log_item.get_action_display(),
             'student_name': log_item.student_name,
             'user': f"{log_item.user.last_name or ''} {log_item.user.first_name or ''}".strip() if log_item.user else "Система",
             'institution': log_item.institution_name or "Не указано",
-            'date': log_item.created_at.strftime('%d.%m.%Y в %H:%M'),
+            'date': timezone.localtime(log_item.created_at).strftime('%d.%m.%Y в %H:%M'),
             'changes': log_item.changes or "Нет подробных данных"
         }
         return JsonResponse(data)

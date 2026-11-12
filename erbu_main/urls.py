@@ -14,6 +14,8 @@ urlpatterns = [
     path('institutions/', views.EducationInstitutionListView.as_view(), name='institutions'),
     path('institution/add/', views.EducationInstitutionCreateView.as_view(), name='institution_add'),
     path('institution/<int:institution_id>/', views.EducationInstitutionDetailView.as_view(), name='institution_detail'),
+    path('institution/<int:institution_id>/reset-password/', views.ResetTeacherPasswordView.as_view(),
+         name='institution_reset_password'),
     path('institution/<int:institution_id>/edit/', views.EducationInstitutionUpdateView.as_view(), name='institution_edit'),
     path('students/export/excel/', views.ExportStudentsExcelView.as_view(), name='student_export_excel'),
     path('institution/<int:institution_id>/delete/', views.EducationInstitutionDeleteView.as_view(), name='institution_delete'),

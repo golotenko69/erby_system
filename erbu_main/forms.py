@@ -1,3 +1,5 @@
+import re
+
 from django import forms
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
@@ -7,6 +9,8 @@ from .models import (
     EducationInstitution
 )
 from django.forms import inlineformset_factory
+
+from .utils import format_term
 
 # ================= ВАЛИДАТОРЫ ДЛЯ ПОЛЕЙ РФ =================
 
@@ -49,12 +53,12 @@ name_validator = RegexValidator(
 
 class StudentForm(forms.ModelForm):
     # Явно указываем required=True для текстовых полей
-    first_name = forms.CharField(label="Имя", validators=[name_validator], required=True)
-    middle_name = forms.CharField(label="Отчество", validators=[name_validator], required=True)
-    last_name = forms.CharField(label="Фамилия", validators=[name_validator], required=True)
-    phone = forms.CharField(label="Телефон", validators=[phone_validator], required=True)
+    first_name = forms.CharField(label="Имя", max_length=100, validators=[name_validator], required=True)
+    middle_name = forms.CharField(label="Отчество", max_length=100, validators=[name_validator], required=True)
+    last_name = forms.CharField(label="Фамилия", max_length=100, validators=[name_validator], required=True)
+    phone = forms.CharField(label="Телефон", max_length=100, validators=[phone_validator], required=True)
     inn = forms.CharField(label="ИНН", validators=[inn_validator], required=True)
-    email = forms.EmailField(label="Email", required=True)
+    email = forms.EmailField(label="Email", max_length=100, required=True)
 
     class Meta:
         model = Student
@@ -103,11 +107,11 @@ class PassportForm(forms.ModelForm):
             field.required = True
 
 class ParentForm(forms.ModelForm):
-    first_name = forms.CharField(label="Имя", validators=[name_validator], required=True)
-    middle_name = forms.CharField(label="Отчество", validators=[name_validator], required=True)
-    last_name = forms.CharField(label="Фамилия", validators=[name_validator], required=True)
-    phone = forms.CharField(label="Телефон", validators=[phone_validator], required=True)
-    email = forms.EmailField(label="Email", required=True)
+    first_name = forms.CharField(label="Имя", max_length=100, validators=[name_validator], required=True)
+    middle_name = forms.CharField(label="Отчество", max_length=100, validators=[name_validator], required=True)
+    last_name = forms.CharField(label="Фамилия", max_length=100, validators=[name_validator], required=True)
+    phone = forms.CharField(label="Телефон", max_length=20, validators=[phone_validator], required=True)
+    email = forms.EmailField(label="Email", max_length=100, required=True)
 
     class Meta:
         model = Parent
@@ -144,36 +148,54 @@ class EducationProcessForm(forms.ModelForm):
         help_text="Формат: 10 мес. или 1 г. 10 мес.",
         widget=forms.TextInput(attrs={'placeholder': 'Например: 1 г. 10 мес.', 'inputmode': 'text'})
     )
+
+    TERM_RE = re.compile(
+        r'(?:(\d+)\s*(?:г(?:од|ода)?|лет)\.?)?\s*(?:(\d+)\s*м(?:ес(?:яц|яца|яцев)?)?\.?)?'
+    )
+
     class Meta:
         model = EducationProcess
         fields = ['education_institution', 'profession', 'course', 'form', 'term', 'grad_date']
         labels = {'education_institution': 'Название учреждения'}
         widgets = {'grad_date': forms.DateInput(attrs={'type': 'date'})}
+
     def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None); super().__init__(*args, **kwargs)
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
         if self.instance and self.instance.pk and self.instance.term:
-            years, months = divmod(self.instance.term, 12)
-            self.fields['term'].initial = (f"{years} г. {months} мес." if years and months else f"{years} г." if years else f"{months} мес.")
-        for field in self.fields.values(): field.required = True
-        if self.user and getattr(self.user, 'role', None) == 'TEACHER':
+            self.initial['term'] = format_term(self.instance.term)
+
+        for field in self.fields.values():
+            field.required = True
+
+        if getattr(self.user, 'role', None) == 'TEACHER':
+            # Ответственное лицо может выбрать только своё учреждение
             institution = getattr(self.user, 'education_institution', None)
+            field = self.fields['education_institution']
             if institution:
-                self.fields['education_institution'].queryset = EducationInstitution.objects.filter(pk=institution.pk)
-                self.fields['education_institution'].initial = institution
-                self.fields['education_institution'].widget.attrs['readonly'] = True
+                field.queryset = EducationInstitution.objects.filter(pk=institution.pk)
+                field.initial = institution
+                field.empty_label = None
             else:
-                self.fields['education_institution'].queryset = EducationInstitution.objects.none()
-                self.fields['education_institution'].widget.attrs['disabled'] = True
+                field.queryset = EducationInstitution.objects.none()
+                field.disabled = True
+
     def clean_term(self):
-        value=(self.cleaned_data.get('term') or '').strip().lower(); import re
-        if value.isdigit(): total=int(value)
+        value = (self.cleaned_data.get('term') or '').strip().lower()
+        if value.isdigit():
+            total = int(value)
         else:
-            m=re.fullmatch(r'(?:(\d+)\s*г(?:од|ода|од)?\.?)?\s*(?:(\d+)\s*м(?:ес(?:яц|яца|яцев)?)?\.?)?',value)
-            if not m or not (m.group(1) or m.group(2)): raise ValidationError('Укажите срок в формате «10 мес.» или «1 г. 10 мес.»')
-            y=int(m.group(1) or 0); mo=int(m.group(2) or 0)
-            if mo>11: raise ValidationError('Количество месяцев после лет должно быть от 0 до 11.')
-            total=y*12+mo
-        if total<=0: raise ValidationError('Срок обучения должен быть больше нуля.')
+            match = self.TERM_RE.fullmatch(value)
+            if not match or not (match.group(1) or match.group(2)):
+                raise ValidationError('Укажите срок в формате «10 мес.» или «1 г. 10 мес.»')
+            years = int(match.group(1) or 0)
+            months = int(match.group(2) or 0)
+            if years and months > 11:
+                raise ValidationError('Количество месяцев после лет должно быть от 0 до 11.')
+            total = years * 12 + months
+        if total <= 0:
+            raise ValidationError('Срок обучения должен быть больше нуля.')
         return total
 
 

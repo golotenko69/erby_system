@@ -6,7 +6,29 @@ on:
       - main  # или master
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run checks and tests
+        env:
+          SECRET_KEY: ci-only-secret-key
+          DEBUG: 'True'
+        run: |
+          python manage.py makemigrations --check --dry-run
+          python manage.py check
+          python manage.py test
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
@@ -20,10 +42,11 @@ jobs:
           REMOTE_HOST: ${{ secrets.BEGET_HOST }}
           REMOTE_USER: ${{ secrets.BEGET_USER }}
           REMOTE_PORT: ${{ secrets.BEGET_PORT }}
-          ARGS: "-rcvrvz --delete"
+          ARGS: "-rlcvz --delete"
           SOURCE: "."
           TARGET: "/home/z/zabteh/erbu.zabteh.ru/public_html"
-          EXCLUDE: "/venv/, /.git/, /.idea/, /db.sqlite3, /.env, /tmp/restart.txt"
+          # media/ и staticfiles/ есть только на сервере — без исключения rsync --delete их сотрёт
+          EXCLUDE: "/venv/, /.git/, /.github/, /.idea/, /db.sqlite3, /.env, /tmp/, /media/, /staticfiles/"
 
       - name: Post-deploy commands (Migrate, Static, Restart)
         uses: appleboy/ssh-action@v1.0.3
@@ -38,7 +61,8 @@ jobs:
               cd /home/z/zabteh/erbu.zabteh.ru/public_html
               source venv/bin/activate
               pip install -r requirements.txt
-              python manage.py migrate --noinput
+              # --fake-initial: таблицы на сервере уже есть, а начальные миграции впервые попали в репозиторий
+              python manage.py migrate --noinput --fake-initial
               python manage.py collectstatic --noinput
               mkdir -p tmp
               touch tmp/restart.txt

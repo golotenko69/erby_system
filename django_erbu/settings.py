@@ -20,6 +20,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(
     DEBUG=(bool, False),
     ALLOWED_HOSTS=(list, []),
+    CSRF_TRUSTED_ORIGINS=(list, []),
+    TIME_ZONE=(str, 'Asia/Chita'),
 )
 
 # Если рядом есть файл .env, читаем его (полезно для локальной разработки без Docker)
@@ -39,9 +41,8 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
 # Application definition
 
-CSRF_TRUSTED_ORIGINS = [
-    'https://procedure-quarry-armed.ngrok-free.dev',
-]
+# Список доверенных источников для CSRF (например: https://erbu.zabteh.ru), задаётся в .env
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -91,11 +92,9 @@ WSGI_APPLICATION = 'django_erbu.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+# По умолчанию SQLite; другую БД можно задать переменной DATABASE_URL (формат django-environ)
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': env.db('DATABASE_URL', default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
 }
 
 
@@ -121,9 +120,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru-ru'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = env('TIME_ZONE')
 
 USE_I18N = True
 
@@ -150,6 +149,15 @@ LOGOUT_REDIRECT_URL = '/'
 
 LOGIN_URL = 'login'
 
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Сообщения храним в сессии (а не в cookie): в них может быть одноразовый пароль ответственного лица
+MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
+
+SESSION_COOKIE_HTTPONLY = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
 AUTH_USER_MODEL = 'users.CustomUser'
 
 # Если проект работает за прокси-сервером (Nginx или Ngrok),
@@ -159,6 +167,8 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # На локальной машине при DEBUG=True строгие редиректы на HTTPS лучше отключить,
 # но на продакшене они включатся автоматически, если настроить переменные.
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    # Редирект на HTTPS можно отключить (SECURE_SSL_REDIRECT=False), если TLS завершается на внешнем прокси,
+    # который не передаёт X-Forwarded-Proto, — иначе будет бесконечный редирект.
+    SECURE_SSL_REDIRECT = env.bool('SECURE_SSL_REDIRECT', default=True)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
