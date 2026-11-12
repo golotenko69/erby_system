@@ -1,45 +1,123 @@
-name: Deploy Django to Beget
+name: CI/CD — тесты и деплой на Beget
 
 on:
+  # Деплой — при каждом пуше (в т.ч. слиянии PR) в master
   push:
-    branches:
-      - main  # или master
+    branches: [master]
+  # Для pull request в master — только тесты, без деплоя
+  pull_request:
+    branches: [master]
+  # Ручной запуск из вкладки Actions (кнопка «Run workflow»)
+  workflow_dispatch:
+
+# Не запускаем два деплоя одновременно: новый ждёт окончания предыдущего
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
+  cancel-in-progress: false
+
+env:
+  DEPLOY_PATH: /home/z/zabteh/erbu.zabteh.ru/public_html
+  SITE_URL: https://erbu.zabteh.ru
 
 jobs:
-  deploy:
+  test:
+    name: Тесты
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: Sync files via RSYNC
-        uses: easingthemes/ssh-deploy-action@v5.0.0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Установка зависимостей
+        run: pip install -r requirements.txt
+
+      - name: Проверки и тесты
+        env:
+          SECRET_KEY: ci-only-secret-key
+          DEBUG: 'True'
+        run: |
+          python manage.py makemigrations --check --dry-run
+          python manage.py check
+          python manage.py test
+
+  deploy:
+    name: Деплой на сервер
+    needs: test
+    # Деплоим только из master (пуш или ручной запуск), но не из pull request
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Проверка секретов
+        env:
+          BEGET_SSH_KEY: ${{ secrets.BEGET_SSH_KEY }}
+          BEGET_HOST: ${{ secrets.BEGET_HOST }}
+          BEGET_USER: ${{ secrets.BEGET_USER }}
+        run: |
+          missing=""
+          [ -n "$BEGET_SSH_KEY" ] || missing="$missing BEGET_SSH_KEY"
+          [ -n "$BEGET_HOST" ] || missing="$missing BEGET_HOST"
+          [ -n "$BEGET_USER" ] || missing="$missing BEGET_USER"
+          if [ -n "$missing" ]; then
+            echo "::error::Не заданы секреты репозитория:$missing (Settings → Secrets and variables → Actions)"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+
+      - name: Загрузка файлов на сервер (rsync)
+        uses: easingthemes/ssh-deploy@v5.1.0
         with:
           SSH_PRIVATE_KEY: ${{ secrets.BEGET_SSH_KEY }}
           REMOTE_HOST: ${{ secrets.BEGET_HOST }}
           REMOTE_USER: ${{ secrets.BEGET_USER }}
-          REMOTE_PORT: ${{ secrets.BEGET_PORT }}
-          ARGS: "-rcvrvz --delete"
-          SOURCE: "."
-          TARGET: "/home/z/zabteh/erbu.zabteh.ru/public_html"
-          EXCLUDE: "/venv/, /.git/, /.idea/, /db.sqlite3, /.env, /tmp/restart.txt"
+          REMOTE_PORT: ${{ secrets.BEGET_PORT || '22' }}
+          ARGS: "-rlcvz --delete"
+          SOURCE: "./"
+          TARGET: ${{ env.DEPLOY_PATH }}
+          # Эти файлы есть только на сервере — без исключения rsync --delete их сотрёт:
+          #  venv, база, .env, загруженные файлы, собранная статика,
+          #  а также passenger_wsgi.py и .htaccess, через которые Beget запускает Django.
+          EXCLUDE: "/venv/, /.git/, /.github/, /.idea/, /db.sqlite3, /.env, /tmp/, /media/, /staticfiles/, /passenger_wsgi.py, /.htaccess, /public/"
 
-      - name: Post-deploy commands (Migrate, Static, Restart)
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Миграции, статика, перезапуск
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
         with:
           host: ${{ secrets.BEGET_HOST }}
           username: ${{ secrets.BEGET_USER }}
           key: ${{ secrets.BEGET_SSH_KEY }}
-          port: ${{ secrets.BEGET_PORT }}
+          port: ${{ secrets.BEGET_PORT || '22' }}
+          envs: DEPLOY_PATH
           script: |
-            # Подключение к Docker-окружению Beget и выполнение команд
-            ssh localhost -p222 << 'EOF'
-              cd /home/z/zabteh/erbu.zabteh.ru/public_html
-              source venv/bin/activate
-              pip install -r requirements.txt
-              python manage.py migrate --noinput
-              python manage.py collectstatic --noinput
-              mkdir -p tmp
-              touch tmp/restart.txt
+            set -e
+            # Python-окружение на Beget доступно внутри Docker-контейнера (ssh localhost -p222).
+            # BatchMode — не ждать ввода пароля, accept-new — не спрашивать про ключ хоста.
+            ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new localhost -p222 \
+                "DEPLOY_PATH='$DEPLOY_PATH' bash -s" << 'EOF'
+            set -euo pipefail
+            cd "$DEPLOY_PATH"
+            source venv/bin/activate
+            pip install -r requirements.txt
+            # --fake-initial: таблицы на сервере уже есть, а начальные миграции впервые попали в репозиторий
+            python manage.py migrate --noinput --fake-initial
+            python manage.py collectstatic --noinput
+            python manage.py check --deploy --fail-level ERROR
+            mkdir -p tmp
+            touch tmp/restart.txt
+            echo "Деплой завершён"
             EOF
+
+      - name: Проверка, что сайт отвечает
+        run: |
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE_URL/accounts/login/" || true)
+            echo "Попытка $i: HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 10
+          done
+          echo "::error::Сайт $SITE_URL не отвечает после деплоя (последний код: $code)"
+          exit 1

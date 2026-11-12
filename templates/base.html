@@ -68,7 +68,7 @@
                 if (!logId) return;
 
                 // Стучимся во View-эндпоинт за подробностями изменений
-                fetch(`/logs/api/${logId}/`)
+                fetch(`/logs/api/${encodeURIComponent(logId)}/`)
                     .then(response => {
                         if (!response.ok) {
                             throw new Error('Доступ ограничен или запись не найдена');
@@ -88,8 +88,10 @@
                         document.getElementById('modalInstitution').innerText = data.institution;
                         document.getElementById('modalDate').innerText = data.date;
 
-                        // Превращаем Python \n переносы в теги <br>
-                        document.getElementById('modalChanges').innerHTML = data.changes.replace(/\n/g, '<br>');
+                        // textContent вместо innerHTML — защита от XSS; переносы строк сохраняет white-space: pre-line
+                        const changesEl = document.getElementById('modalChanges');
+                        changesEl.style.whiteSpace = 'pre-line';
+                        changesEl.textContent = data.changes;
 
                         // Отображаем окно в режиме Flexbox для центрирования
                         document.getElementById('logModal').style.display = 'flex';

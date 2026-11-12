@@ -32,7 +32,7 @@
             </div>
             <div class="header-stats">
                 <div class="stat-card">
-                    <span class="stat-value">{{ students|length }}</span>
+                    <span class="stat-value">{% if paginator %}{{ paginator.count }}{% else %}{{ students|length }}{% endif %}</span>
                     <span class="stat-label">Всего студентов</span>
                 </div>
             </div>
